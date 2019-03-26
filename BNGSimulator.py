@@ -14,12 +14,13 @@ class BNGSimulator:
     and runs BNG2.pl. This is the basic method of operation at the moment, later will
     either be completely replaced by PySB simulator object or other stuff added
     """
-    def __init__(self, bngl, BNGPATH, path=None, cleanup=True):
+    def __init__(self, parser, BNGPATH, path=None, cleanup=True):
         # If path is given we assume we are doing a multiprocess run
+        self.parser = parser
         if path is not None:
             self._setup_working_path(path)
+        self.prep_bngl()
         self.set_BNG_path(BNGPATH)
-        self.setup_BNGL(bngl)
         self.result = None
         self.cleanup = cleanup
         return
@@ -37,7 +38,11 @@ class BNGSimulator:
         # Switch there 
         if os.getcwd() != self.path:
             os.chdir(self.path)
+        # Get our 
         return
+
+    def prep_bngl(self):
+        self.bngl_path = self.parser.export_bngl()
 
     def ensure_working_path(self):
         print("Ensuring path: {}".format(self.path))
@@ -50,35 +55,9 @@ class BNGSimulator:
         """
         if not self.test_bngexec():
             return False
-        if not os.path.isfile(self.bngl):
+        if not os.path.isfile(self.bngl_path):
             return False
         return True
-    
-    def setup_BNGL(self, bngl):
-        if bngl is None:
-            # Let's see if we can divine the BNGL file first
-            bngl_files = list(filter(lambda x: x.endswith(".bngl"), os.listdir(os.getcwd())))
-            if len(bngl_files) == 0:
-                print("No BNGL file given or exists in the PWD, simulator won't run")
-            elif len(bngl_files) > 1:
-                print("More than one BNGL file exists in PWD, using {}".format(bngl_files[0]))
-            else:
-                print("BNGL file found in PWD: {}".format(bngl_files[0]))
-                self.bngl = bngl_files[0]
-        else:
-            if not os.path.isfile(bngl):
-                print("BNGL file given doesn't exist, simulator won't run")
-            else:
-                # Now assuming BNGL file given exists, we are in the right folder
-                # self.bngl will point to the copied 
-                self.bngl_name = os.path.basename(bngl)
-                self.bngl = os.path.join(os.getcwd(), self.bngl_name)
-                if not os.path.isfile(self.bngl):
-                    try:
-                        copyfile(bngl, self.bngl)
-                    except IOError:
-                        print("BNGL file can't be copied to PWD, simulator won't run")
-        return 
     
     def set_BNG_path(self, BNGPATH):
         # Let's keep up the idea we pull this path from the environment
@@ -116,11 +95,11 @@ class BNGSimulator:
         
     def run(self):
         self.ensure_working_path()
-        rc = subprocess.run([self.bngexec, self.bngl])
+        rc = subprocess.run([self.bngexec, self.bngl_path])
         #print(rc)
         if rc.returncode == 0:
             print("Simulation succesful, loading results")
-            self.result = BNGResult(os.getcwd(), self.bngl)
+            self.result = BNGResult(os.getcwd(), self.bngl_path)
             if self.cleanup:
                 print("Cleanup asked, removing simulation folder {}".format(self.path))
                 self.clean_sim_folder()

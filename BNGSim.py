@@ -5,6 +5,7 @@ import numpy as np
 
 from BNGSimulator import BNGSimulator
 from BNGResult import BNGResult
+from BNGParser import BNGParser
 
 class BNGSim:
     """
@@ -28,27 +29,16 @@ class BNGSim:
         # Basic path setting here
         self._setup_working_path(path)
         self.ncores = ncores
-        self.bngl = bngl
+        self.parser = BNGParser(bngl)
         self.BNGPATH = BNGPATH
         # Initialize results
         self.results = []
         self.combined_results = None
         self.cleanup = cleanup
-
-    def _setup_simulator(self, bngl, BNGPATH):
-        # Simulator WILL assume we are in the correct folder so make sure we are by this point
-        simulator = BNGSimulator(bngl, BNGPATH)
-        self.bngl = simulator.bngl
-        self.BNGPATH = simulator.BNGPATH
-        self.bngexec = simulator.bngexec
-        return simulator
     
-    def _setup_simulators(self, bngl, BNGPATH, ncores):
-        paths = [os.path.join(self.path, "{:08d}".format(i)) for i in range(ncores)]
-        simulators = [BNGSimulator(bngl, BNGPATH, path, self.cleanup) for path in paths]
-        self.bngls = [simulator.bngl for simulator in simulators]
-        self.BNGPATH = simulators[0].BNGPATH
-        self.bngexec = simulators[0].bngexec
+    def _setup_simulators(self, nsims):
+        paths = [os.path.join(self.path, "{:08d}".format(i)) for i in range(nsims)]
+        simulators = [BNGSimulator(self.parser, self.BNGPATH, path, self.cleanup) for path in paths]
         return simulators
     
     def _call_into_simulator(self, simulator):
@@ -57,22 +47,15 @@ class BNGSim:
 
     def run_simulation(self, nsims=1):
         # Setting stuff up for simulation in case we want that
-        if nsims == 1:
-            self.simulator = self._setup_simulator(self.bngl, self.BNGPATH)
-        else:
-            self.simulators = self._setup_simulators(self.bngl, self.BNGPATH, nsims)
-
+        self.simulators = self._setup_simulators(nsims)
         self.ensure_working_path()
+
         if self.ncores == 1:
-            if not self.simulator.is_ready():
-                print("Can't run a simulation because the simulator is not setup correctly")
-                return
-            else:
-                for i in range(nsims):
-                    result = self.simulator.run()
-                    if result is not None:
-                        result.set_name("simulation_{:08d}".format(len(self.results)))
-                        self.results.append(result)
+            for simulator in self.simulators:
+                result = simulator.run()
+                if result is not None:
+                    result.set_name("simulation_{:08d}".format(len(self.results)))
+                    self.results.append(result)
         elif self.ncores > nsims:
             print("running parallel with {} cores".format(self.ncores))
             p = Pool(nsims)
