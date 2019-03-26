@@ -45,7 +45,7 @@ class BNGSim:
     
     def _setup_simulators(self, bngl, BNGPATH, ncores):
         paths = [os.path.join(self.path, "{:08d}".format(i)) for i in range(ncores)]
-        simulators = [BNGSimulator(bngl, BNGPATH, path, cleanup) for path in paths]
+        simulators = [BNGSimulator(bngl, BNGPATH, path, self.cleanup) for path in paths]
         self.bngls = [simulator.bngl for simulator in simulators]
         self.BNGPATH = simulators[0].BNGPATH
         self.bngexec = simulators[0].bngexec
