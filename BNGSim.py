@@ -1,6 +1,5 @@
-import os, sys, subprocess, h5py, pickle
+import os, h5py
 from multiprocessing import Pool
-from shutil import copyfile
 import numpy as np
 
 from BNGSimulator import BNGSimulator
