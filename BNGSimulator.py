@@ -5,6 +5,7 @@ from shutil import rmtree
 
 import numpy as np
 
+import BNGUtils
 from BNGResult import BNGResult
 
 class BNGSimulator:
@@ -20,7 +21,7 @@ class BNGSimulator:
         if path is not None:
             self._setup_working_path(path)
         self.prep_bngl()
-        self.set_BNG_path(BNGPATH)
+        BNGUtils.set_BNG_path(self, BNGPATH)
         self.result = None
         self.cleanup = cleanup
         return
@@ -53,38 +54,12 @@ class BNGSimulator:
         """
         Checks if the simulator is ready to run
         """
-        if not self.test_bngexec():
+        if not BNGUtils.test_bngexec(self):
             return False
         if not os.path.isfile(self.bngl_path):
             return False
         return True
     
-    def set_BNG_path(self, BNGPATH):
-        # Let's keep up the idea we pull this path from the environment
-        if BNGPATH == "":
-            try:
-                BNGPATH = os.environ['BNGPATH']
-            except KeyError:
-                print("BNGPATH is not given or set in the environment")
-        # Raise a warning if we don't have access to BNGPath now
-        self.BNGPATH = BNGPATH
-        if BNGPATH == "":
-            self.bngexec = "BNG2.pl"
-        else:
-            self.bngexec = self.BNGPATH + "/BNG2.pl"
-        if not self.test_bngexec():
-            print("BNG2.pl not working, simulator won't run")
-        else:
-            print("BNG2.pl seems to be working")
-        return
-    
-    def test_bngexec(self):
-        rc = subprocess.run([self.bngexec])
-        if rc.returncode == 0:
-            return True
-        else:
-            return False
-
     def clean_sim_folder(self):
         if os.getcwd() == self.path:
             rmtree(self.path)

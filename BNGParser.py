@@ -1,4 +1,9 @@
-import os
+import os, subprocess
+import BNGUtils
+from bs4 import BeautifulSoup as BS
+
+# TODO: Collate together useful functions and make them into BNGUtils 
+# instead of copying them into classes 
 
 class BNGParser:
     '''
@@ -6,13 +11,35 @@ class BNGParser:
     strip actions that are in the file originally in there and able to append
     lines to the file. 
     '''
-    def __init__(self, bngl):
+    def __init__(self, bngl, BNGPATH):
         if bngl is None:
             self.find_and_set_bngl()
         else:
             self.bngl_file = bngl
         if self.bngl_file is not None:
             self.init_bngl(self.bngl_file)
+        if BNGPATH != "": 
+            # We assume BNGPATH is legit and we'll use it for 
+            # XML generation
+            BNGUtils.set_BNG_path(self, BNGPATH)
+            self.gen_and_load_XML()
+
+    def gen_and_load_XML(self):
+        self.clean_actions()
+        rc = subprocess.run([self.bngexec, "--xml", self.bngl_file])
+        bname = os.path.basename(self.bngl_file)
+        mname = bname.replace(".bngl", "")
+        xmlName = mname + ".xml"
+        if rc.returncode == 0:
+            print("XML generated")
+            self.loaded_xml = self.load_xml(xmlName)
+            print("XML loaded")
+
+    def load_xml(self, xml):
+        f = open(xml, 'r')
+        sxml = BS(f, 'xml')
+        f.close()
+        return sxml
 
     def init_bngl(self, bngl_file):
         self.bngl_list = self.read_to_list(bngl_file)

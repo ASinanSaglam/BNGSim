@@ -1,4 +1,5 @@
-import os, h5py
+import os, h5py, sys
+sys.setrecursionlimit(2000)
 from multiprocessing import Pool
 import numpy as np
 
@@ -17,25 +18,35 @@ class BNGSim:
     - This can be skipped, in which case it should assume this is for analysis. Then
     it automatically parses for existing files and loads them in. 
     
-    TODO: Actually manipulate the BNGL file so we can setup the actions block if nothing else
+    TODO: Actually manipulate the BNGL file to allow for parameter changes and stuff. We can change
+    the action blocks now. 
     TODO: Search for a net file, if exists fall back to run_network/nfsim binaries and don't call
     BNG2.pl (what other file do we need for nfsim again?). This essentially makes it 
     usable by WESTPA directly.
-    TODO: Incorporate PySB simulator over the super basic simulator we have here. Similar for 
-    BNGL manipulation too.
     """
     def __init__(self, path, BNGPATH="", bngl=None, ncores=1, cleanup=True):
         # Basic path setting here
         self._setup_working_path(path)
         self.ncores = ncores
-        self.parser = BNGParser(bngl)
+        self.parser = BNGParser(bngl, BNGPATH=BNGPATH)
         self.BNGPATH = BNGPATH
         # Initialize results
         self.results = []
         self.combined_results = None
         self.cleanup = cleanup
+
+    def set_new_bngl(self, new_bngl):
+        '''
+        New bngl file for the simulator, sets up a new parser instance as well.
+        '''
+        self.bngl  = new_bngl
+        self.parser = BNGParser(new_bngl)
     
     def _setup_simulators(self, nsims):
+        '''
+        Setting up a list of simulator instances to run. Each instance knows it's own 
+        path to run the simulations so the simulators are entirely independent.
+        '''
         paths = [os.path.join(self.path, "{:08d}".format(i)) for i in range(nsims)]
         simulators = [BNGSimulator(self.parser, self.BNGPATH, path, self.cleanup) for path in paths]
         return simulators
