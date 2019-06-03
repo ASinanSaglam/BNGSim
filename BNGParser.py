@@ -1,4 +1,4 @@
-import os, subprocess
+import os, subprocess, copy
 import BNGUtils
 from bs4 import BeautifulSoup as BS
 
@@ -17,14 +17,18 @@ class BNGParser:
         else:
             self.bngl_file = bngl
         if self.bngl_file is not None:
-            self.init_bngl(self.bngl_file)
+            if not run_params is None:
+                self.init_bngl(self.bngl_file, no_action=True)
+            else:
+                self.init_bngl(self.bngl_file)
         if BNGPATH != "": 
             # We assume BNGPATH is legit and we'll use it for 
             # XML generation
             BNGUtils.set_BNG_path(self, BNGPATH)
             self.gen_and_load_XML()
         if not run_params is None:
-            self.add_params_to_bngl(run_params)
+            self.run_params = run_params
+            self.add_params_to_bngl()
 
     def gen_and_load_XML(self):
         self.clean_actions()
@@ -43,9 +47,18 @@ class BNGParser:
         f.close()
         return sxml
 
-    def init_bngl(self, bngl_file):
+    def init_bngl(self, bngl_file, no_action=False):
         self.bngl_list = self.read_to_list(bngl_file)
         self.bngl = "".join(self.bngl_list)
+        if no_action:
+            self.clean_actions()
+        self.dump_bngl()
+        # TODO: This bit is a bit hacky, gotta figure out a better way 
+        self.bngl_file = "current.bngl"
+
+    def dump_bngl(self):
+        with open("current.bngl", "w") as f:
+            f.write(self.bngl)
 
     def read_to_list(self, bngl_file):
         with open(bngl_file, 'r') as f:
@@ -54,13 +67,17 @@ class BNGParser:
 
     def clean_actions(self):
         no_action_bngl = []
+        modified = False
         for line in self.bngl_list:
             if "end model" in line: 
                 no_action_bngl.append(line)
+                modified = True
                 break
             no_action_bngl.append(line)
-        self.bngl_list = no_action_bngl
-        self.bngl = "".join(self.bngl_list)
+        if modified:
+            self.bngl_list = no_action_bngl
+            self.original_bngl = copy.copy(self.bngl)
+            self.bngl = "".join(self.bngl_list)
 
     def add_action(self, action):
         # TODO: For now I'm just assuming the "action" is just a string
@@ -89,10 +106,10 @@ class BNGParser:
     def add_params_to_bngl(self):
         self.add_action("generate_network{overwrite=>1}")
         simulate_cmd = 'simulate({'
-        for opt in run_params.keys():
+        for opt in self.run_params.keys():
             if opt == "method":
-                simulate_cmd += '{}=>"{}"'.format(opt, run_params[opt])
+                simulate_cmd += '{}=>"{}"'.format(opt, self.run_params[opt])
             else:
-                simulate_cmd += '{}=>{}'.format(opt, run_params[opt])
+                simulate_cmd += '{}=>{}'.format(opt, self.run_params[opt])
         simulate_cmd += '})'
         self.add_action(simulate_cmd)
