@@ -21,7 +21,9 @@ class BNGSimulator:
         if path is not None:
             self._setup_working_path(path)
         self.prep_bngl()
-        BNGUtils.set_BNG_path(self, BNGPATH)
+        BNGPATH, bngexec = BNGUtils.find_BNG_path(self, BNGPATH)
+        self.BNGPATH = BNGPATH
+        self.bngexec = bngexec
         self.result = None
         self.cleanup = cleanup
         return
@@ -71,7 +73,6 @@ class BNGSimulator:
     def run(self):
         self.ensure_working_path()
         rc = subprocess.run([self.bngexec, self.bngl_path])
-        #print(rc)
         if rc.returncode == 0:
             print("Simulation succesful, loading results")
             self.result = BNGResult(os.getcwd(), self.bngl_path)

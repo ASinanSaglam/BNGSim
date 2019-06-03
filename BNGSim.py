@@ -192,7 +192,7 @@ class BNGSim:
         # run simulations
         self.run_simulation(self.nsims)
         # Save results
-        if self.combine:
+        if self.combined:
             self.combine_results()
             self.save_results(self.outname, combined=True)
         else:

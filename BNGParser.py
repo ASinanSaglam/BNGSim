@@ -24,7 +24,9 @@ class BNGParser:
         if BNGPATH != "": 
             # We assume BNGPATH is legit and we'll use it for 
             # XML generation
-            BNGUtils.set_BNG_path(self, BNGPATH)
+            BNGPATH, bngexec = BNGUtils.find_BNG_path(self, BNGPATH)
+            self.BNGPATH = BNGPATH
+            self.bngexec = bngexec 
             self.gen_and_load_XML()
         if not run_params is None:
             self.run_params = run_params
@@ -80,6 +82,7 @@ class BNGParser:
         # later we'll probably make BNGAction class or something that's capable
         # of generating the string
         self.bngl = self.bngl + action + "\n"
+        self.export_bngl(self.bngl_file)
 
     def export_bngl(self, bngl_path="model.bngl"):
         with open(bngl_path, 'w') as f:
@@ -100,12 +103,15 @@ class BNGParser:
             self.bngl_file = bngl_files[0]
 
     def add_params_to_bngl(self):
-        self.add_action("generate_network{overwrite=>1}")
+        self.add_action("generate_network({overwrite=>1})")
         simulate_cmd = 'simulate({'
-        for opt in self.run_params.keys():
+        opts_len = len(self.run_params.keys())
+        for iopt, opt in enumerate(self.run_params.keys()):
             if opt == "method":
                 simulate_cmd += '{}=>"{}"'.format(opt, self.run_params[opt])
             else:
                 simulate_cmd += '{}=>{}'.format(opt, self.run_params[opt])
+            if iopt < opts_len-1:
+                simulate_cmd += ","
         simulate_cmd += '})'
         self.add_action(simulate_cmd)
