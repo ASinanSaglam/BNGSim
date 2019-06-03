@@ -52,13 +52,9 @@ class BNGParser:
         self.bngl = "".join(self.bngl_list)
         if no_action:
             self.clean_actions()
-        self.dump_bngl()
+        self.export_bngl("current.bngl")
         # TODO: This bit is a bit hacky, gotta figure out a better way 
         self.bngl_file = "current.bngl"
-
-    def dump_bngl(self):
-        with open("current.bngl", "w") as f:
-            f.write(self.bngl)
 
     def read_to_list(self, bngl_file):
         with open(bngl_file, 'r') as f:
