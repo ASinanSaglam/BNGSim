@@ -21,7 +21,7 @@ class BNGSimulator:
         if path is not None:
             self._setup_working_path(path)
         self.prep_bngl()
-        BNGPATH, bngexec = BNGUtils.find_BNG_path(self, BNGPATH)
+        BNGPATH, bngexec = BNGUtils.find_BNG_path(BNGPATH)
         self.BNGPATH = BNGPATH
         self.bngexec = bngexec
         self.result = None

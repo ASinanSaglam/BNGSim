@@ -24,7 +24,7 @@ class BNGParser:
         if BNGPATH != "": 
             # We assume BNGPATH is legit and we'll use it for 
             # XML generation
-            BNGPATH, bngexec = BNGUtils.find_BNG_path(self, BNGPATH)
+            BNGPATH, bngexec = BNGUtils.find_BNG_path(BNGPATH)
             self.BNGPATH = BNGPATH
             self.bngexec = bngexec 
             self.gen_and_load_XML()

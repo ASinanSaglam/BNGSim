@@ -11,7 +11,7 @@ def find_BNG_path(BNGPATH):
     if BNGPATH == "":
         bngexec = "BNG2.pl"
     else:
-        bngexec = obj.BNGPATH + "/BNG2.pl"
+        bngexec = BNGPATH + "/BNG2.pl"
     if not test_bngexec(bngexec):
         print("BNG2.pl not working, simulator won't run")
     else:
