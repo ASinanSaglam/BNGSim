@@ -11,7 +11,7 @@ class BNGParser:
     strip actions that are in the file originally in there and able to append
     lines to the file. 
     '''
-    def __init__(self, bngl, BNGPATH):
+    def __init__(self, bngl, BNGPATH, run_params=None):
         if bngl is None:
             self.find_and_set_bngl()
         else:
@@ -23,6 +23,8 @@ class BNGParser:
             # XML generation
             BNGUtils.set_BNG_path(self, BNGPATH)
             self.gen_and_load_XML()
+        if not run_params is None:
+            self.add_params_to_bngl(run_params)
 
     def gen_and_load_XML(self):
         self.clean_actions()
@@ -83,3 +85,14 @@ class BNGParser:
         else:
             print("BNGL file found in PWD: {}".format(bngl_files[0]))
             self.bngl_file = bngl_files[0]
+
+    def add_params_to_bngl(self):
+        self.add_action("generate_network{overwrite=>1}")
+        simulate_cmd = 'simulate({'
+        for opt in run_params.keys():
+            if opt == "method":
+                simulate_cmd += '{}=>"{}"'.format(opt, run_params[opt])
+            else:
+                simulate_cmd += '{}=>{}'.format(opt, run_params[opt])
+        simulate_cmd += '})'
+        self.add_action(simulate_cmd)
