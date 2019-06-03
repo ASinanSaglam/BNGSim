@@ -71,8 +71,12 @@ class BNGSimulator:
         print("Cleaned up simulation folder")
         
     def run(self):
+        print("running {} on {}".format(self.bngexec, self.bngl_path))
+        print("ensuring path")
         self.ensure_working_path()
+        print("running bngl")
         rc = subprocess.run([self.bngexec, self.bngl_path])
+        print("return code parsing")
         if rc.returncode == 0:
             print("Simulation succesful, loading results")
             self.result = BNGResult(os.getcwd(), self.bngl_path)

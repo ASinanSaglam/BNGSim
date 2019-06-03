@@ -11,7 +11,7 @@ class BNGParser:
     strip actions that are in the file originally in there and able to append
     lines to the file. 
     '''
-    def __init__(self, bngl, BNGPATH, run_params=None):
+    def __init__(self, bngl, BNGPATH, run_params=None, loadxml=True):
         if bngl is None:
             self.find_and_set_bngl()
         else:
@@ -27,7 +27,8 @@ class BNGParser:
             BNGPATH, bngexec = BNGUtils.find_BNG_path(BNGPATH)
             self.BNGPATH = BNGPATH
             self.bngexec = bngexec 
-            self.gen_and_load_XML()
+            if loadxml:
+                self.gen_and_load_XML()
         if not run_params is None:
             self.run_params = run_params
             self.add_params_to_bngl()
@@ -54,9 +55,9 @@ class BNGParser:
         self.bngl = "".join(self.bngl_list)
         if no_action:
             self.clean_actions()
-        self.export_bngl("current.bngl")
+        self.export_bngl(os.getcwd() + "/current.bngl")
         # TODO: This bit is a bit hacky, gotta figure out a better way 
-        self.bngl_file = "current.bngl"
+        self.bngl_file = os.getcwd() + "/current.bngl"
 
     def read_to_list(self, bngl_file):
         with open(bngl_file, 'r') as f:

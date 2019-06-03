@@ -7,6 +7,10 @@ from BNGSimulator import BNGSimulator
 from BNGResult import BNGResult
 from BNGParser import BNGParser
 
+def _call_into_simulator(simulator):
+    res = simulator.run()
+    return res
+
 class BNGSim:
     """
     The starting goals of this class is as follows:
@@ -33,7 +37,10 @@ class BNGSim:
         # Run parameters for BNGL, parser should tackle this
         self.run_params = run_params
         # Now we can set the parser and the bngl file
-        self.set_bngl(bngl, run_params=run_params)
+        if ncores > 1:
+            self.set_bngl(bngl, run_params=run_params)
+        else:
+            self.set_bngl(bngl, run_params=run_params, xml=True)
         # How many cores will we use?
         self.ncores = ncores
         # Do we cleanup after?
@@ -55,9 +62,9 @@ class BNGSim:
         simulators = [BNGSimulator(self.parser, self.BNGPATH, path, self.cleanup) for path in paths]
         return simulators
     
-    def _call_into_simulator(self, simulator):
-        res = simulator.run()
-        return res
+    #def _call_into_simulator(self, simulator):
+    #    res = simulator.run()
+    #    return res
 
     def _setup_working_path(self, path):    
         if not os.path.isdir(path): 
@@ -74,12 +81,12 @@ class BNGSim:
             os.chdir(self.path)
         return     
 
-    def set_bngl(self, bngl, run_params=None):
+    def set_bngl(self, bngl, run_params=None, xml=False):
         '''
         New bngl file for the simulator, sets up a new parser instance as well.
         '''
         self.bngl  = bngl
-        self.parser = BNGParser(bngl, BNGPATH=self.BNGPATH, run_params=run_params)
+        self.parser = BNGParser(bngl, BNGPATH=self.BNGPATH, run_params=run_params, loadxml=xml)
 
     def run_simulation(self, nsims=1):
         # Setting stuff up for simulation in case we want that
@@ -95,14 +102,14 @@ class BNGSim:
         elif self.ncores > nsims:
             print("running parallel with {} cores".format(self.ncores))
             p = Pool(nsims)
-            para_res = p.map(self._call_into_simulator, self.simulators)
+            para_res = p.map(_call_into_simulator, self.simulators)
             for res in para_res:
                 res.set_name("simulation_{:08d}".format(len(self.results)))
                 self.results.append(res)
         else:
             print("running parallel with {} cores".format(self.ncores))
             p = Pool(self.ncores)
-            para_res = p.map(self._call_into_simulator, self.simulators)
+            para_res = p.map(_call_into_simulator, self.simulators)
             for res in para_res:
                 res.set_name("simulation_{:08d}".format(len(self.results)))
                 self.results.append(res)
@@ -190,7 +197,7 @@ class BNGSim:
         Main way this class is intended to function
         '''
         # run simulations
-        self.run_simulation(self.nsims)
+        self.run_simulation(nsims=self.nsims)
         # Save results
         if self.combined:
             self.combine_results()
