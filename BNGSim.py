@@ -24,24 +24,28 @@ class BNGSim:
     BNG2.pl (what other file do we need for nfsim again?). This essentially makes it 
     usable by WESTPA directly.
     """
-    def __init__(self, path, BNGPATH="", bngl=None, ncores=1, cleanup=True):
-        # Basic path setting here
+    def __init__(self, path, BNGPATH="", bngl=None, ncores=1, cleanup=True, 
+                 run_params=None, nsims=1, outname='output.h5', combined=False):
+        # First setup working path
         self._setup_working_path(path)
-        self.ncores = ncores
-        self.parser = BNGParser(bngl, BNGPATH=BNGPATH)
+        # Second, we need path to BNG installation
         self.BNGPATH = BNGPATH
+        # Run parameters for BNGL, parser should tackle this
+        self.run_params = run_params
+        # Now we can set the parser and the bngl file
+        self.set_bngl(bngl, run_params=run_params)
+        # How many cores will we use?
+        self.ncores = ncores
+        # Do we cleanup after?
+        self.cleanup = cleanup
         # Initialize results
         self.results = []
         self.combined_results = None
-        self.cleanup = cleanup
+        # other misc parameters
+        self.nsims = nsims
+        self.outname = outname
+        self.combined = combined
 
-    def set_new_bngl(self, new_bngl):
-        '''
-        New bngl file for the simulator, sets up a new parser instance as well.
-        '''
-        self.bngl  = new_bngl
-        self.parser = BNGParser(new_bngl)
-    
     def _setup_simulators(self, nsims):
         '''
         Setting up a list of simulator instances to run. Each instance knows it's own 
@@ -54,6 +58,28 @@ class BNGSim:
     def _call_into_simulator(self, simulator):
         res = simulator.run()
         return res
+
+    def _setup_working_path(self, path):    
+        if not os.path.isdir(path): 
+            print("Given simulation path does not exist or invalid, trying to create")
+            try: 
+                os.mkdir(path)
+            except OSError:
+                print("Failed to create given path")
+                os.exit(1)
+        
+        self.path = path
+        # Switch there 
+        if os.getcwd() != self.path:
+            os.chdir(self.path)
+        return     
+
+    def set_bngl(self, bngl, run_params=None):
+        '''
+        New bngl file for the simulator, sets up a new parser instance as well.
+        '''
+        self.bngl  = bngl
+        self.parser = BNGParser(bngl, BNGPATH=self.BNGPATH, run_params=run_params)
 
     def run_simulation(self, nsims=1):
         # Setting stuff up for simulation in case we want that
@@ -81,27 +107,15 @@ class BNGSim:
                 res.set_name("simulation_{:08d}".format(len(self.results)))
                 self.results.append(res)
     
-    def _setup_working_path(self, path):    
-        if not os.path.isdir(path): 
-            print("Given simulation path does not exist or invalid, trying to create")
-            try: 
-                os.mkdir(path)
-            except OSError:
-                print("Failed to create given path")
-                os.exit(1)
-        
-        self.path = path
-        # Switch there 
-        if os.getcwd() != self.path:
-            os.chdir(self.path)
-        return     
-   
     def ensure_working_path(self, path=None):
         if os.getcwd() != self.path:
             os.chdir(self.path)
         return 
     
     def collect_results(self):
+        '''
+        Convenience function to load in data in the current working directory
+        '''
         self.results.append(BNGResult(os.getcwd(),""))
         return
     
@@ -170,3 +184,16 @@ class BNGSim:
         for i, result in enumerate(self.results):
             self.combined_results[i] = result.gdat[:]
         print("Results combined in combined_results attribute")
+
+    def run(self):
+        '''
+        Main way this class is intended to function
+        '''
+        # run simulations
+        self.run_simulation(self.nsims)
+        # Save results
+        if self.combine:
+            self.combine_results()
+            self.save_results(self.outname, combined=True)
+        else:
+            self.save_results(self.outname)
