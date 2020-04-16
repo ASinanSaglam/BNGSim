@@ -1,26 +1,18 @@
 import re
 import IPython
 
+# TODO: Talk in detail what else needs parsed with Jim
+
 # Objects in the model
 class ModelBlock:
     def __init__(self):
         self._item_dict = {}
-        self._item_list = []
 
     def __repr__(self):
         # overwrites what the class representation
         # shows the items in the model block in 
         # say ipython
         return str(self._item_dict)
-
-    def __str__(self):
-        # overwrites what the method returns when 
-        # it's converted to string
-        block_lines = ["begin {}".format(self.name)]
-        for item in self._item_list:
-            block_lines.append("  " + " ".join(item))
-        block_lines.append("end {}\n".format(self.name))
-        return "\n".join(block_lines)
 
     def __setattr__(self, name, value):
         if hasattr(self, "_item_dict"):
@@ -38,7 +30,6 @@ class ModelBlock:
         # TODO: Error handling, some names will definitely break this
         name, value = item_tpl
         self._item_dict[name] = value
-        self._item_list.append([name, value])
         try:
             setattr(self, name, value)
         except:
@@ -64,6 +55,15 @@ class Parameters(ModelBlock):
         super().__init__()
         self.name = "parameters"
 
+    def __str__(self):
+        # overwrites what the method returns when 
+        # it's converted to string
+        block_lines = ["begin {}".format(self.name)]
+        for item in self._item_dict.keys():
+            block_lines.append("  " + "{} {}".format(item, self._item_dict[item]))
+        block_lines.append("end {}\n".format(self.name))
+        return "\n".join(block_lines)
+
 class Species(ModelBlock):
     '''
     Class containing species
@@ -71,6 +71,15 @@ class Species(ModelBlock):
     def __init__(self):
         super().__init__()
         self.name = "species"
+
+    def __str__(self):
+        # overwrites what the method returns when 
+        # it's converted to string
+        block_lines = ["begin {}".format(self.name)]
+        for item in self._item_dict.keys():
+            block_lines.append("  " + "{}".format(item))
+        block_lines.append("end {}\n".format(self.name))
+        return "\n".join(block_lines)
 
 class MoleculeTypes(ModelBlock):
     '''
@@ -80,8 +89,18 @@ class MoleculeTypes(ModelBlock):
         super().__init__()
         self.name = "molecule types"
 
-    def add_item(self, name):
-        self._item_list.append(list(name))
+    def add_item(self, item_tpl):
+        name, = item_tpl
+        self._item_dict[name] = ""
+
+    def __str__(self):
+        # overwrites what the method returns when 
+        # it's converted to string
+        block_lines = ["begin {}".format(self.name)]
+        for item in self._item_dict.keys():
+            block_lines.append("  " + "{}".format(item))
+        block_lines.append("end {}\n".format(self.name))
+        return "\n".join(block_lines)
 
 class Observables(ModelBlock):
     '''
@@ -93,7 +112,20 @@ class Observables(ModelBlock):
 
     def add_item(self, item_tpl): 
         otype, name, pattern = item_tpl
-        self._item_list.append([otype, name, pattern])
+        self._item_dict[name] = [otype, pattern]
+
+    def __str__(self):
+        # overwrites what the method returns when 
+        # it's converted to string
+        block_lines = ["begin {}".format(self.name)]
+        print(self._item_dict)
+        for item in self._item_dict.keys():
+            block_lines.append("  " + 
+                    "{} {} {}".format(self._item_dict[item][0],
+                                      item,
+                                      self._item_dict[item][1]))
+        block_lines.append("end {}\n".format(self.name))
+        return "\n".join(block_lines)
 
 class Functions(ModelBlock):
     '''
@@ -103,18 +135,35 @@ class Functions(ModelBlock):
         super().__init__()
         self.name = "functions"
 
+    # TODO: Fix this 
+    def __str__(self):
+        # overwrites what the method returns when 
+        # it's converted to string
+        block_lines = ["begin {}".format(self.name)]
+        print(self._item_dict)
+        for item in self._item_dict.keys():
+            block_lines.append("  " + 
+                    "{} {} {}".format(self._item_dict[item][0],
+                                      item,
+                                      self._item_dict[item][1]))
+        block_lines.append("end {}\n".format(self.name))
+        return "\n".join(block_lines)
+
 class Rules(ModelBlock):
     def __init__(self):
         super().__init__()
         self.name = "reaction rules"
 
     def add_item(self, item_tpl):
+        # TODO: handle this entirely differently and 
+        # properly parse rules
         rule_txt = item_tpl
-        self._item_list.append(rule_txt)
+        self._item_dict[rule_txt] = ""
 
     def __str__(self):
+        # TODO: printing also needs a lot of adjusting
         block_lines = ["begin {}".format(self.name)]
-        for item in self._item_list:
+        for item in self._item_dict.keys():
             block_lines.append("".join(item))
         block_lines.append("end {}".format(self.name))
         return "\n".join(block_lines)
@@ -270,7 +319,6 @@ class BNGModel:
         '''
         model_str = ""
         for block in self.active_blocks:
-            print(block)
             model_str += str(getattr(self, block))
         print(model_str)
 
