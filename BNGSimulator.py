@@ -26,7 +26,6 @@ class BNGSimulator:
         self.bngexec = bngexec
         self.result = None
         self.cleanup = cleanup
-        return
     
     def _setup_working_path(self, path):    
         if not os.path.isdir(path): 

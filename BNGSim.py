@@ -25,8 +25,7 @@ class BNGSim:
     TODO: Actually manipulate the BNGL file to allow for parameter changes and stuff. We can change
     the action blocks now. 
     TODO: Search for a net file, if exists fall back to run_network/nfsim binaries and don't call
-    BNG2.pl (what other file do we need for nfsim again?). This essentially makes it 
-    usable by WESTPA directly.
+    BNG2.pl     
     """
     def __init__(self, path, BNGPATH="", bngl=None, ncores=1, cleanup=True, 
                  run_params=None, nsims=1, outname='output.h5', combined=False):
