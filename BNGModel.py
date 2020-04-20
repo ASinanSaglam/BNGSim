@@ -94,12 +94,25 @@ class MolTypePattern(Pattern):
         molt_str += ")"
         return molt_str
 
-def RulePattern(Pattern):
-    def __init__(self, rule_xml):
-        super().__init__(rule_xml)
+class RulePattern(Pattern):
+    def __init__(self, pattern_xml):
+        super().__init__(pattern_xml)
 
-    def resolve_xml(self, rule_xml):
+    def resolve_xml(self, pattern_xml):
+        '''
+        in this particular case also sets the self.item_tuple
+        '''
+        print("RulePattern resolve_xml")
         IPython.embed()
+        # 
+        rule_name = pattern_xml['@name']
+        lhs_xml = pattern_xml['ListOfReactantPatterns']
+        rhs_xml = pattern_xml['ListOfProductPatterns']
+        rate_law = pattern_xml['RateLaw']
+        # 
+        # We need to set self.item_tuple to 
+        # (rule_name, LHS, RHS, rate_law)
+        self.item_tuple = (rule_name, lhs, rhs, rate_law)
 
 # Objects in the model
 class ModelBlock:
@@ -321,13 +334,10 @@ class Rules(ModelBlock):
         # properly parse rules
         '''
         A reaction rule, requires a 5-tuple
-        (rule_name, LHS, RHS, rule_tye, rate_law)
-        rule_types allowed are unidirectional or bidirectional
-        raw_law is the string for the rule, can be a tuple for 
-        bidirectional rules
+        (rule_name, LHS, RHS, rate_law)
         '''
-        rule_name, lhs, rhs, rule_type, rate_law = item_tpl
-        self._item_dict[rule_name] = (lhs, rhs, rule_type)
+        rule_name, lhs, rhs, rate_law = item_tpl
+        self._item_dict[rule_name] = (lhs, rhs, rate_law)
 
     def __str__(self):
         # TODO: printing also needs a lot of adjusting
@@ -337,17 +347,22 @@ class Rules(ModelBlock):
                 rule_str = item[0] + ": "
             else:
                 rule_str = ""
-            if item[3] == "unidirectional":
-                rule_str += lhs + " -> " + rhs
-                assert len(item[4]) == 1, "More than one ratelaw given for unidirectional rule {}".format(rule_str)
-                rule_str += item[4]
-            elif item[3] == "bidirectional":
-                rule_str += lhs + " <-> " + rhs
-                assert len(item[4]) <= 2, "More than two ratelaws given for unidirectional rule {}".format(rule_str)
-                rule_str += "{} {}".format(item[4][0], item[4][1])
-            else:
-                print("Don't know rule type {}".format(item[3]))
-                raise NotImplemented
+            # TODO: A key issue w/ the XML parsing is that
+            # every reaction is unidirectional. We need to take them
+            # all in here, and then consoliate the ones that are 
+            # clearly the reverses of each other 
+
+            # if item[3] == "unidirectional":
+            #     rule_str += lhs + " -> " + rhs
+            #     assert len(item[4]) == 1, "More than one ratelaw given for unidirectional rule {}".format(rule_str)
+            #     rule_str += item[4][0]
+            # elif item[3] == "bidirectional":
+            #     rule_str += lhs + " <-> " + rhs
+            #     assert len(item[4]) <= 2, "More than two ratelaws given for unidirectional rule {}".format(rule_str)
+            #     rule_str += "{} {}".format(item[4][0], item[4][1])
+            # else:
+            #     print("Don't know rule type {}".format(item[3]))
+            #     raise NotImplemented
             block_lines.append(rule_str)
         block_lines.append("end {}".format(self.name))
         return "\n".join(block_lines)
@@ -459,7 +474,10 @@ class BNGModel:
                 self.rules = Rules()
                 # TODO: We need to turn these into strings
                 for rd in rrules_list:
-                    self.rules.add_item((rd['@name'],rd['@id'],rd['@id']))
+                    # we will need a 5-tuple
+                    rpattern = RulePattern(rd)
+                    IPython.embed()
+                    self.rules.add_item(rpattern.item_tuple)
                 self.active_blocks.append("rules")
             elif listkey == "ListOfFunctions":
                 #TODO: Implement functions
@@ -612,6 +630,6 @@ class BNGModel:
         print(model_str)
 
 if __name__ == "__main__":
-    model = BNGModel("validation/FceRI_ji.bngl")
-    # model = BNGModel("FceRI_ji.xml")
+    # model = BNGModel("validation/FceRI_ji.bngl")
+    model = BNGModel("FceRI_ji.xml")
     # IPython.embed()
