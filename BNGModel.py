@@ -1,6 +1,98 @@
-import re, functools, subprocess, os, xmltodict
+import re, functools, subprocess, os, xmltodict, sys
 import BNGUtils
 import IPython
+
+class Pattern:
+    def __init__(self, pattern_xml):
+        self.pattern_xml = pattern_xml
+        self.string = self.resolve_xml(self.pattern_xml)
+
+    def __str__(self):
+        return self.string
+
+class ObsPattern(Pattern):
+    def __init__(self, pattern_xml):
+        super().__init__(pattern_xml)
+
+    def mol_to_str(self, mol_xml):
+        if "ListOfComponents" in mol_xml:
+            mol_str = mol_xml["@name"] + "("
+            mol_str += self.comp_to_str(mol_xml["ListOfComponents"]["Component"])
+            mol_str += ")"
+        else:
+            # this means we have multiple molecules bonding
+            mol_str = ""
+            for imol, mol in enumerate(mol_xml):
+                if imol > 0:
+                    # complexing
+                    mol_str += "."
+                if "ListOfComponents" not in mol:
+                    # No components
+                    mol_str += mol["@name"] + "()"
+                else:
+                    # with components
+                    mol_str += self.mol_to_str(mol)
+        return mol_str
+
+    def comp_to_str(self, comp_xml):
+        # comp xml can be a list or a dict
+        if not '@name' in comp_xml:
+            # we have multiple and this is a list
+            comp_str = ""
+            for icomp, comp in enumerate(comp_xml):
+                if icomp > 0:
+                    comp_str += ","
+                comp_str += comp['@name']
+                if "@state" in comp:
+                    comp_str += "~{}".format(comp['@state'])
+                if comp["@numberOfBonds"] != '0':
+                    comp_str += "!{}".format(comp['@numberOfBonds'])
+        else:
+            # single comp, this is a dict
+            comp_str = comp_xml['@name']
+            if "@state" in comp_xml:
+                comp_str += "~{}".format(comp_xml['@state'])
+            if comp_xml['@numberOfBonds'] != '0':
+                comp_str += "!{}".format(comp_xml['@numberOfBonds'])
+        return comp_str
+
+    def resolve_xml(self, xml_obs):
+        patterns = xml_obs['Pattern']
+        if not "ListOfMolecules" in patterns:
+            # we have multiple stuff so this becomes a list
+            obs_str = ""
+            for ipattern, pattern in enumerate(patterns): 
+                if ipattern > 0:
+                    obs_str += ","
+                mol = pattern['ListOfMolecules']['Molecule']
+                obs_str += self.mol_to_str(mol) 
+        else:
+            mol = patterns['ListOfMolecules']["Molecule"]
+            obs_str = self.mol_to_str(mol)
+        return obs_str
+
+class MolTypePattern(Pattern):
+    def __init__(self, pattern_xml):
+        super().__init__(pattern_xml)
+
+    def resolve_xml(self, xml_molt):
+        molt_str = xml_molt['@id'] + "("
+        comp_dict = xml_molt['ListOfComponentTypes']['ComponentType']
+        if '@id' in comp_dict:
+            molt_str += comp_dict['@id']
+        else:
+            # multiple components
+            for icomp, comp in enumerate(comp_dict):
+                if icomp > 0:
+                    molt_str += ","
+                molt_str += comp['@id']
+                if "ListOfAllowedStates" in comp:
+                    # we have states
+                    al_states = comp['ListOfAllowedStates']['AllowedState']
+                    for istate, state in enumerate(al_states):
+                        molt_str += "~{}".format(state['@id'])
+        molt_str += ")"
+        return molt_str
 
 # Objects in the model
 class ModelBlock:
@@ -181,30 +273,6 @@ class Observables(ModelBlock):
         obs = list(map(lambda x: x.split(), obs))
         self.add_items(obs)
 
-    def resolve_xml(self, xml_obs):
-        # TODO: implement this s.t. that the pattern dicts get turned into strings
-        IPython.embed()
-        patterns = xml_obs['Pattern']
-        if len(patterns) > 1:
-            # we have multiple stuff so this becomes a list
-            obs_str = ""
-            for pattern in patterns: 
-                mol = pattern['Molecule']
-
-        else:
-            mol = patterns['ListOfMolecules']["Molecule"]
-            obs_str = mol["@name"] + "("
-            if "ListOfComponents" in mol:
-                comp_list = mol["ListOfComponents"]["Component"]
-                for icomp, comp in enumerate(comp_list):
-                    if icomp > 0:
-                        obs_str += ","
-                    obs_str += comp["@name"]
-                    if comp["@numberOfBonds"] != 0:
-                        # TODO: We need to add the bond
-                        pass
-            obs_str += ")"
-        return obs_str
 
 class Functions(ModelBlock):
     '''
@@ -326,7 +394,8 @@ class BNGModel:
                 self.observables = Observables()
                 # we need to turn the patterns into strings
                 for od in obs_list:
-                    pattern = self.observables.resolve_xml(od['ListOfPatterns'])
+                    IPython.embed()
+                    pattern = ObsPattern(od['ListOfPatterns'])
                     self.observables.add_item((od['@type'], od['@name'], pattern))
                 self.active_blocks.append("observables")
             elif listkey == "ListOfCompartments":
@@ -339,7 +408,8 @@ class BNGModel:
                 mtypes_list = xml_model[listkey]["MoleculeType"]
                 self.moltypes = MoleculeTypes()
                 for md in mtypes_list:
-                    self.moltypes.add_item((md['@id'],))
+                    pattern = MolTypePattern(md)
+                    self.moltypes.add_item((pattern,))
                 self.active_blocks.append("moltypes")
             elif listkey == "ListOfSpecies":
                 species_list = xml_model[listkey]["Species"]
@@ -505,5 +575,6 @@ class BNGModel:
         print(model_str)
 
 if __name__ == "__main__":
-    model = BNGModel("validation/FceRI_ji.bngl")
+    # model = BNGModel("validation/FceRI_ji.bngl")
+    model = BNGModel("FceRI_ji.xml")
     # IPython.embed()
