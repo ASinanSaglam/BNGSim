@@ -94,6 +94,13 @@ class MolTypePattern(Pattern):
         molt_str += ")"
         return molt_str
 
+def RulePattern(Pattern):
+    def __init__(self, rule_xml):
+        super().__init__(rule_xml)
+
+    def resolve_xml(self, rule_xml):
+        IPython.embed()
+
 # Objects in the model
 class ModelBlock:
     def __init__(self):
@@ -312,22 +319,49 @@ class Rules(ModelBlock):
     def add_item(self, item_tpl):
         # TODO: handle this entirely differently and 
         # properly parse rules
-        rule_txt = item_tpl
-        self._item_dict[rule_txt] = ""
+        '''
+        A reaction rule, requires a 5-tuple
+        (rule_name, LHS, RHS, rule_tye, rate_law)
+        rule_types allowed are unidirectional or bidirectional
+        raw_law is the string for the rule, can be a tuple for 
+        bidirectional rules
+        '''
+        rule_name, lhs, rhs, rule_type, rate_law = item_tpl
+        self._item_dict[rule_name] = (lhs, rhs, rule_type)
 
     def __str__(self):
         # TODO: printing also needs a lot of adjusting
         block_lines = ["\nbegin {}".format(self.name)]
         for item in self._item_dict.keys():
-            block_lines.append("".join(item))
+            if item[0] != "":
+                rule_str = item[0] + ": "
+            else:
+                rule_str = ""
+            if item[3] == "unidirectional":
+                rule_str += lhs + " -> " + rhs
+                assert len(item[4]) == 1, "More than one ratelaw given for unidirectional rule {}".format(rule_str)
+                rule_str += item[4]
+            elif item[3] == "bidirectional":
+                rule_str += lhs + " <-> " + rhs
+                assert len(item[4]) <= 2, "More than two ratelaws given for unidirectional rule {}".format(rule_str)
+                rule_str += "{} {}".format(item[4][0], item[4][1])
+            else:
+                print("Don't know rule type {}".format(item[3]))
+                raise NotImplemented
+            block_lines.append(rule_str)
         block_lines.append("end {}".format(self.name))
         return "\n".join(block_lines)
 
     def parse_block(self, block):
+        # TODO: Update this so it parses the rules to at least
+        # some extent. Don't need anything complicated, just need 
+        # a barebones implementation 
+
         # strip comments
         rules = list(map(self.strip_comment, block))
         # split 
         rules = list(map(lambda x: " ".join(x.split(" ")), rules))
+        # FIXME: This needs a 5-tuple per item, see above
         self.add_items(rules)
 
 # Now onto the actual model and parsing
@@ -364,6 +398,10 @@ class BNGModel:
                 raise NotImplemented
 
     def generate_xml(self, model_file):
+        # TODO: Make sure to delete all actions, this will
+        # run the model FIRST and then pull in the XML. Can 
+        # lead to a ton of generated species if there is are 
+        # commands in there
         rc = subprocess.run([self.bngexec, "--xml", model_file])
         if rc.returncode == 1:
             print("SBML generation failed, trying the fallback parser")
@@ -394,7 +432,6 @@ class BNGModel:
                 self.observables = Observables()
                 # we need to turn the patterns into strings
                 for od in obs_list:
-                    IPython.embed()
                     pattern = ObsPattern(od['ListOfPatterns'])
                     self.observables.add_item((od['@type'], od['@name'], pattern))
                 self.active_blocks.append("observables")
@@ -575,6 +612,6 @@ class BNGModel:
         print(model_str)
 
 if __name__ == "__main__":
-    # model = BNGModel("validation/FceRI_ji.bngl")
-    model = BNGModel("FceRI_ji.xml")
+    model = BNGModel("validation/FceRI_ji.bngl")
+    # model = BNGModel("FceRI_ji.xml")
     # IPython.embed()
