@@ -1,27 +1,20 @@
-import re
+import re, functools, subprocess, os, xmltodict
+import BNGUtils
 import IPython
-
-# TODO: Talk in detail what else needs parsed with Jim
 
 # Objects in the model
 class ModelBlock:
     def __init__(self):
         self._item_dict = {}
 
+    def __len__(self):
+        return len(self._item_dict.keys())
+
     def __repr__(self):
         # overwrites what the class representation
         # shows the items in the model block in 
         # say ipython
         return str(self._item_dict)
-
-    def __setattr__(self, name, value):
-        if hasattr(self, "_item_dict"):
-            if name in self._item_dict.keys():
-                self._item_dict[name] = value
-        self.__dict__[name] = value
-
-    def format_line(self, key):
-        return "{} {}".format(self._item_dict[key])
 
     def add_item(self, item_tpl):
         # TODO: try adding evaluation of the parameter here
@@ -40,13 +33,17 @@ class ModelBlock:
         for item in item_list:
             self.add_item(item)
 
-    def print_all(self):
-        print(self._item_dict)
+    def print(self):
+        print(self)
+
+    def strip_comment(self, line):
+        return line[0:line.find("#")]
+
+    def parse_block(self, block):
+        raise NotImplemented
 
 
 # TODO: Add a LOT of error handling
-# TODO: Each object requires a write function 
-# appropriate to the object
 class Parameters(ModelBlock):
     '''
     Class containing parameters
@@ -55,14 +52,32 @@ class Parameters(ModelBlock):
         super().__init__()
         self.name = "parameters"
 
+    def __setattr__(self, name, value):
+        if hasattr(self, "_item_dict"):
+            if name in self._item_dict.keys():
+                self._item_dict[name] = value
+        self.__dict__[name] = value
+
     def __str__(self):
         # overwrites what the method returns when 
         # it's converted to string
-        block_lines = ["begin {}".format(self.name)]
+        block_lines = ["\nbegin {}".format(self.name)]
         for item in self._item_dict.keys():
             block_lines.append("  " + "{} {}".format(item, self._item_dict[item]))
         block_lines.append("end {}\n".format(self.name))
         return "\n".join(block_lines)
+
+    def parse_block(self, block):
+        # strip comments
+        params = list(map(self.strip_comment, block))
+        # split properly
+        params = list(map(lambda x: x.split(), params))
+        # ensure we have at least 2 elements
+        params = list(filter(lambda x: len(x)>1, params))
+        # list should be param_name = expression
+        params = list(map(lambda x: [x[0], str(functools.reduce(lambda x,y: x+y, x[1:]))], params))
+        # now generate the param object
+        self.add_items(params)
 
 class Species(ModelBlock):
     '''
@@ -75,11 +90,24 @@ class Species(ModelBlock):
     def __str__(self):
         # overwrites what the method returns when 
         # it's converted to string
-        block_lines = ["begin {}".format(self.name)]
+        block_lines = ["\nbegin {}".format(self.name)]
         for item in self._item_dict.keys():
-            block_lines.append("  " + "{}".format(item))
+            block_lines.append("  " + "{} {}".format(item,self._item_dict[item]))
         block_lines.append("end {}\n".format(self.name))
         return "\n".join(block_lines)
+
+    def parse_block(self, block):
+        # strip comments 
+        species = list(map(self.strip_comment, block))
+        # basically the same as parameters 
+        species = list(map(lambda x: x.split(), species))
+        self.add_items(species)
+
+    def __getitem__(self, key):
+        return self._item_dict[key]
+
+    def __setitem__(self, key, value):
+        self._item_dict[key] = value
 
 class MoleculeTypes(ModelBlock):
     '''
@@ -96,11 +124,18 @@ class MoleculeTypes(ModelBlock):
     def __str__(self):
         # overwrites what the method returns when 
         # it's converted to string
-        block_lines = ["begin {}".format(self.name)]
+        block_lines = ["\nbegin {}".format(self.name)]
         for item in self._item_dict.keys():
             block_lines.append("  " + "{}".format(item))
         block_lines.append("end {}\n".format(self.name))
         return "\n".join(block_lines)
+
+    def parse_block(self, block):
+        # strip comments 
+        moltypes = list(map(self.strip_comment, block))
+        # remove white spaces 
+        moltypes = list(map(lambda x: x.split(), moltypes))
+        self.add_items(moltypes)
 
 class Observables(ModelBlock):
     '''
@@ -110,15 +145,27 @@ class Observables(ModelBlock):
         super().__init__()
         self.name = "observables"
 
+    # TODO: Fix this so that we can change obs
+    # and leave the obs type alone
+    def __setattr__(self, name, value):
+        if hasattr(self, "_item_dict"):
+            if name in self._item_dict.keys():
+                self._item_dict[name][1] = value
+        self.__dict__[name] = value
+
     def add_item(self, item_tpl): 
         otype, name, pattern = item_tpl
         self._item_dict[name] = [otype, pattern]
+        try:
+            setattr(self, name, pattern)
+        except:
+            print("can't set {} to {}".format(name, pattern))
+            pass
 
     def __str__(self):
         # overwrites what the method returns when 
         # it's converted to string
-        block_lines = ["begin {}".format(self.name)]
-        print(self._item_dict)
+        block_lines = ["\nbegin {}".format(self.name)]
         for item in self._item_dict.keys():
             block_lines.append("  " + 
                     "{} {} {}".format(self._item_dict[item][0],
@@ -126,6 +173,38 @@ class Observables(ModelBlock):
                                       self._item_dict[item][1]))
         block_lines.append("end {}\n".format(self.name))
         return "\n".join(block_lines)
+
+    def parse_block(self, block):
+        # strip comments 
+        obs = list(map(self.strip_comment, block))
+        # remove white spaces and split
+        obs = list(map(lambda x: x.split(), obs))
+        self.add_items(obs)
+
+    def resolve_xml(self, xml_obs):
+        # TODO: implement this s.t. that the pattern dicts get turned into strings
+        IPython.embed()
+        patterns = xml_obs['Pattern']
+        if len(patterns) > 1:
+            # we have multiple stuff so this becomes a list
+            obs_str = ""
+            for pattern in patterns: 
+                mol = pattern['Molecule']
+
+        else:
+            mol = patterns['ListOfMolecules']["Molecule"]
+            obs_str = mol["@name"] + "("
+            if "ListOfComponents" in mol:
+                comp_list = mol["ListOfComponents"]["Component"]
+                for icomp, comp in enumerate(comp_list):
+                    if icomp > 0:
+                        obs_str += ","
+                    obs_str += comp["@name"]
+                    if comp["@numberOfBonds"] != 0:
+                        # TODO: We need to add the bond
+                        pass
+            obs_str += ")"
+        return obs_str
 
 class Functions(ModelBlock):
     '''
@@ -136,10 +215,11 @@ class Functions(ModelBlock):
         self.name = "functions"
 
     # TODO: Fix this 
+    # TODO: Fix this such that we can re-write functions
     def __str__(self):
         # overwrites what the method returns when 
         # it's converted to string
-        block_lines = ["begin {}".format(self.name)]
+        block_lines = ["\nbegin {}".format(self.name)]
         print(self._item_dict)
         for item in self._item_dict.keys():
             block_lines.append("  " + 
@@ -148,6 +228,13 @@ class Functions(ModelBlock):
                                       self._item_dict[item][1]))
         block_lines.append("end {}\n".format(self.name))
         return "\n".join(block_lines)
+
+    def parse_block(self, block):
+        # strip comments
+        functions = list(map(self.strip_comment, block))
+        # split by = sign
+        functions = list(map(lambda x: x.split("="), functions))
+        self.functions.add_items(functions)
 
 class Rules(ModelBlock):
     def __init__(self):
@@ -162,21 +249,126 @@ class Rules(ModelBlock):
 
     def __str__(self):
         # TODO: printing also needs a lot of adjusting
-        block_lines = ["begin {}".format(self.name)]
+        block_lines = ["\nbegin {}".format(self.name)]
         for item in self._item_dict.keys():
             block_lines.append("".join(item))
         block_lines.append("end {}".format(self.name))
         return "\n".join(block_lines)
+
+    def parse_block(self, block):
+        # strip comments
+        rules = list(map(self.strip_comment, block))
+        # split 
+        rules = list(map(lambda x: " ".join(x.split(" ")), rules))
+        self.add_items(rules)
 
 # Now onto the actual model and parsing
 class BNGModel:
     '''
     The full model
     '''
-    def __init__(self, bngl_file):
-        self.changed = False
+    def __init__(self, bngl_model, BNGPATH=None, BNGLmode=False):
         self.active_blocks = []
-        self.parse_bngl(bngl_file)
+        self.BNGLmode = BNGLmode
+        BNGPATH, bngexec = BNGUtils.find_BNG_path(BNGPATH)
+        self.BNGPATH = BNGPATH
+        self.bngexec = bngexec 
+        self.parse_model(bngl_model)
+
+    def parse_model(self, model_file):
+        if self.BNGLmode and model_file.endswith(".bngl"):
+            # forces the old code path that tries to
+            # parse bngl
+            self.parse_bngl(model_file)
+        else:
+            # this route runs BNG2.pl on the bngl and parses
+            # the XML instead
+            if model_file.endswith(".bngl"):
+                model_file = self.generate_xml(model_file)
+                if model_file is not None:
+                    self.parse_xml(model_file)
+                else:
+                    self.parse_bngl(model_file)
+            elif model_file.endswith(".xml"):
+                self.parse_xml(model_file)
+            else:
+                print("The extension of {} is not supported".format(model_file))
+                raise NotImplemented
+
+    def generate_xml(self, model_file):
+        rc = subprocess.run([self.bngexec, "--xml", model_file])
+        if rc.returncode == 1:
+            print("SBML generation failed, trying the fallback parser")
+            return None
+        else:
+            # we should now have the SBML file 
+            _, model_name = os.path.split(model_file)
+            model_name = model_name.replace(".bngl", "")
+            xml_file = model_name + ".xml"
+            return xml_file
+
+    def parse_xml(self, model_file):
+        # TODO: implement the SBML parser
+        print("Parsing the XML")
+        with open(model_file, "r") as f:
+            xml_str = "".join(f.readlines())
+        xml_dict = xmltodict.parse(xml_str)
+        xml_model = xml_dict['sbml']['model']
+        for listkey in xml_model.keys():
+            if listkey == "ListOfParameters":
+                param_list = xml_model[listkey]['Parameter']
+                self.parameters = Parameters()
+                for pd in param_list:
+                    self.parameters.add_item((pd['@id'],pd['@value']))
+                self.active_blocks.append("parameters")
+            elif listkey == "ListOfObservables":
+                obs_list = xml_model[listkey]['Observable']
+                self.observables = Observables()
+                # we need to turn the patterns into strings
+                for od in obs_list:
+                    pattern = self.observables.resolve_xml(od['ListOfPatterns'])
+                    self.observables.add_item((od['@type'], od['@name'], pattern))
+                self.active_blocks.append("observables")
+            elif listkey == "ListOfCompartments":
+                comp_list = xml_model[listkey]
+                if comp_list is not None:
+                    # TODO: implement compartment parsing
+                    pass
+                    self.active_blocks.append("compartments")
+            elif listkey == "ListOfMoleculeTypes":
+                mtypes_list = xml_model[listkey]["MoleculeType"]
+                self.moltypes = MoleculeTypes()
+                for md in mtypes_list:
+                    self.moltypes.add_item((md['@id'],))
+                self.active_blocks.append("moltypes")
+            elif listkey == "ListOfSpecies":
+                species_list = xml_model[listkey]["Species"]
+                self.species = Species()
+                for sd in species_list:
+                    self.species.add_item((sd['@name'],sd['@concentration']))
+                self.active_blocks.append("species")
+            elif listkey == "ListOfReactionRules":
+                rrules_list = xml_model[listkey]["ReactionRule"]
+                self.rules = Rules()
+                # TODO: We need to turn these into strings
+                for rd in rrules_list:
+                    self.rules.add_item((rd['@name'],rd['@id'],rd['@id']))
+                self.active_blocks.append("rules")
+            elif listkey == "ListOfFunctions":
+                #TODO: Implement functions
+                pass
+        # Tons more work to do with implementing XML parsing
+        IPython.embed()
+
+    def __str__(self):
+        '''
+        write the model to str
+        '''
+        model_str = "begin model\n"
+        for block in self.active_blocks:
+            model_str += str(getattr(self, block))
+        model_str += "\nend model"
+        return model_str
 
     def parse_bngl(self, bngl_file):
         with open(bngl_file, 'r') as bngl:
@@ -233,71 +425,61 @@ class BNGModel:
             elif re.match(r'^simulate*', line):
                 blocks["actions"].append(bngl_lines[iline])
         # parse blocks
-        self.parse_blocks(blocks)
+        self.parse_bngl_blocks(blocks)
 
-    def parse_blocks(self, blocks):
+    def parse_bngl_blocks(self, blocks):
         # parameters, observables, compartments, species, 
         # gen_network, simulate, rrules, functions
         for key, value in blocks.items():
             # get appropriate function to parse the block
             getattr(self, "_parse_"+key)(value)
 
-    def strip_comment(self, line):
-        return line[0:line.find("#")]
-
     def _parse_parameters(self, block):
-        # strip comments
-        params = list(map(self.strip_comment, block))
-        # split properly
-        params = list(map(lambda x: x.split(), params))
+        # initialize the block object
         self.parameters = Parameters()
-        self.parameters.add_items(params)
+        # get the block to string
+        self.parameters.parse_block(block)
+        # active blocks list
         self.active_blocks.append("parameters")
 
     def _parse_species(self, block):
-        # strip comments 
-        species = list(map(self.strip_comment, block))
-        # basically the same as parameters 
-        species = list(map(lambda x: x.split(), species))
+        # init
         self.species = Species()
-        self.species.add_items(species)
+        # parse
+        self.species.parse_block(block)
+        # add to active list
         self.active_blocks.append("species")
 
     def _parse_moltypes(self, block):
-        # strip comments 
-        moltypes = list(map(self.strip_comment, block))
-        # remove white spaces 
-        moltypes = list(map(lambda x: x.split(), moltypes))
+        # init
         self.moltypes = MoleculeTypes()
-        self.moltypes.add_items(moltypes)
+        # parse
+        self.moltypes.parse_block(block)
+        # add to active list
         self.active_blocks.append("moltypes")
 
     def _parse_observables(self, block):
-        # strip comments 
-        obs = list(map(self.strip_comment, block))
-        # remove white spaces and split
-        obs = list(map(lambda x: x.split(), obs))
+        # init
         self.observables = Observables()
-        self.observables.add_items(obs)
+        # parse
+        self.observables.parse_block(block)
+        # add to active list
         self.active_blocks.append("observables")
 
     def _parse_functions(self, block):
-        # strip comments
-        functions = list(map(self.strip_comment, block))
-        # split by = sign
-        functions = list(map(lambda x: x.split("="), functions))
+        # init
         self.functions = Functions()
-        self.functions.add_items(functions)
-        self.functions.print_all()
+        # parse
+        self.functions.parse_block(block)
+        # add to active list
         self.active_blocks.append("functions")
 
     def _parse_rrules(self, block):
-        # strip comments
-        rules = list(map(self.strip_comment, block))
-        # split 
-        rules = list(map(lambda x: " ".join(x.split(" ")), rules))
+        # init
         self.rules = Rules()
-        self.rules.add_items(rules)
+        # parse
+        self.rules.parse_block(block)
+        # add to active list
         self.active_blocks.append("rules")
 
     def _parse_actions(self, block):
@@ -323,5 +505,5 @@ class BNGModel:
         print(model_str)
 
 if __name__ == "__main__":
-    model = BNGModel("exMISA.bngl")
-    IPython.embed()
+    model = BNGModel("validation/FceRI_ji.bngl")
+    # IPython.embed()
