@@ -2,6 +2,7 @@ import re, functools, subprocess, os, xmltodict, sys
 import BNGUtils
 import IPython
 
+###### PATTERNS ###### 
 class Pattern:
     def __init__(self, pattern_xml):
         self.pattern_xml = pattern_xml
@@ -10,14 +11,11 @@ class Pattern:
     def __str__(self):
         return self.string
 
-class ObsPattern(Pattern):
-    def __init__(self, pattern_xml):
-        super().__init__(pattern_xml)
-
     def mol_to_str(self, mol_xml):
-        if "ListOfComponents" in mol_xml:
+        if not isinstance(mol_xml, list):
             mol_str = mol_xml["@name"] + "("
-            mol_str += self.comp_to_str(mol_xml["ListOfComponents"]["Component"])
+            if "ListOfComponents" in mol_xml:
+                mol_str += self.comp_to_str(mol_xml["ListOfComponents"]["Component"])
             mol_str += ")"
         else:
             # this means we have multiple molecules bonding
@@ -26,12 +24,10 @@ class ObsPattern(Pattern):
                 if imol > 0:
                     # complexing
                     mol_str += "."
-                if "ListOfComponents" not in mol:
-                    # No components
-                    mol_str += mol["@name"] + "()"
-                else:
-                    # with components
-                    mol_str += self.mol_to_str(mol)
+                mol_str += mol["@name"] + "("
+                if "ListOfComponents" in mol:
+                    mol_str += self.comp_to_str(mol['ListOfComponents']['Component'])
+                mol_str += ")"
         return mol_str
 
     def comp_to_str(self, comp_xml):
@@ -56,9 +52,13 @@ class ObsPattern(Pattern):
                 comp_str += "!{}".format(comp_xml['@numberOfBonds'])
         return comp_str
 
+class ObsPattern(Pattern):
+    def __init__(self, pattern_xml):
+        super().__init__(pattern_xml)
+
     def resolve_xml(self, xml_obs):
         patterns = xml_obs['Pattern']
-        if not "ListOfMolecules" in patterns:
+        if isinstance(patterns, list):
             # we have multiple stuff so this becomes a list
             obs_str = ""
             for ipattern, pattern in enumerate(patterns): 
@@ -102,18 +102,60 @@ class RulePattern(Pattern):
         '''
         in this particular case also sets the self.item_tuple
         '''
-        print("RulePattern resolve_xml")
-        IPython.embed()
         # 
         rule_name = pattern_xml['@name']
-        lhs_xml = pattern_xml['ListOfReactantPatterns']
-        rhs_xml = pattern_xml['ListOfProductPatterns']
-        rate_law = pattern_xml['RateLaw']
+        lhs = self.resolve_rxn_side(pattern_xml['ListOfReactantPatterns'])
+        rhs = self.resolve_rxn_side(pattern_xml['ListOfProductPatterns'])
+        rate_law = self.resolve_ratelaw(pattern_xml['RateLaw'])
         # 
         # We need to set self.item_tuple to 
         # (rule_name, LHS, RHS, rate_law)
         self.item_tuple = (rule_name, lhs, rhs, rate_law)
+        return "{}: {} -> {} {}".format(rule_name, lhs, rhs, rate_law)
 
+    def resolve_ratelaw(self, rate_xml):
+        rate_type = rate_xml['@type']
+        rate_cts_xml = rate_xml['ListOfRateConstants']
+        # TODO: what happens if this is not just a simple 
+        # rate constant? Probably this becomes a list 
+        # and we'll fail right here.
+        rate_cts = rate_cts_xml['RateConstant']['@value']
+        return rate_cts
+
+    def resolve_rxn_side(self, side_xml):
+        # this is either reactant or product
+        if 'ReactantPattern' in side_xml:
+            # this is a lhs/reactant side
+            side_list = side_xml['ReactantPattern']
+            if isinstance(side_list, list):
+                # this is a list of reactants
+                react_str = ""
+                for ireact, react in enumerate(side_list):
+                    if ireact > 0:
+                        react_str += " + "
+                    react_str += self.mol_to_str(react['ListOfMolecules']['Molecule'])
+            else: 
+                # TODO: a single item? 
+                react_str = self.mol_to_str(side_list['ListOfMolecules']['Molecule'])
+            return react_str
+        elif "ProductPattern" in side_xml:
+            side_list = side_xml['ProductPattern']
+            if isinstance(side_list, list):
+                # this is a list of reactants
+                prod_str = ""
+                for iprod, prod in enumerate(side_list):
+                    if iprod > 0:
+                        prod_str += " + "
+                    prod_str += self.mol_to_str(prod['ListOfMolecules']['Molecule'])
+            else: 
+                # TODO: a single item? 
+                prod_str = self.mol_to_str(side_list['ListOfMolecules']['Molecule'])
+            return prod_str
+        else: 
+            print("do not recognize XML: {}".format(side_xml))
+###### PATTERNS ###### 
+
+###### MODEL STRUCTURES ###### 
 # Objects in the model
 class ModelBlock:
     def __init__(self):
@@ -257,8 +299,6 @@ class Observables(ModelBlock):
         super().__init__()
         self.name = "observables"
 
-    # TODO: Fix this so that we can change obs
-    # and leave the obs type alone
     def __setattr__(self, name, value):
         if hasattr(self, "_item_dict"):
             if name in self._item_dict.keys():
@@ -302,7 +342,6 @@ class Functions(ModelBlock):
         super().__init__()
         self.name = "functions"
 
-    # TODO: Fix this 
     # TODO: Fix this such that we can re-write functions
     def __str__(self):
         # overwrites what the method returns when 
@@ -343,28 +382,16 @@ class Rules(ModelBlock):
         # TODO: printing also needs a lot of adjusting
         block_lines = ["\nbegin {}".format(self.name)]
         for item in self._item_dict.keys():
-            if item[0] != "":
-                rule_str = item[0] + ": "
-            else:
-                rule_str = ""
-            # TODO: A key issue w/ the XML parsing is that
-            # every reaction is unidirectional. We need to take them
-            # all in here, and then consoliate the ones that are 
-            # clearly the reverses of each other 
-
-            # if item[3] == "unidirectional":
-            #     rule_str += lhs + " -> " + rhs
-            #     assert len(item[4]) == 1, "More than one ratelaw given for unidirectional rule {}".format(rule_str)
-            #     rule_str += item[4][0]
-            # elif item[3] == "bidirectional":
-            #     rule_str += lhs + " <-> " + rhs
-            #     assert len(item[4]) <= 2, "More than two ratelaws given for unidirectional rule {}".format(rule_str)
-            #     rule_str += "{} {}".format(item[4][0], item[4][1])
-            # else:
-            #     print("Don't know rule type {}".format(item[3]))
-            #     raise NotImplemented
+            rule_tpl = self._item_dict[item]
+            rule_str = ""
+            if item != "":
+                rule_str += "  {}: ".format(item)
+            rule_str += rule_tpl[0]
+            rule_str += " -> "
+            rule_str += rule_tpl[1] 
+            rule_str += " {}".format(rule_tpl[2])
             block_lines.append(rule_str)
-        block_lines.append("end {}".format(self.name))
+        block_lines.append("end {}\n".format(self.name))
         return "\n".join(block_lines)
 
     def parse_block(self, block):
@@ -376,9 +403,11 @@ class Rules(ModelBlock):
         rules = list(map(self.strip_comment, block))
         # split 
         rules = list(map(lambda x: " ".join(x.split(" ")), rules))
-        # FIXME: This needs a 5-tuple per item, see above
+        # FIXME: This needs a 4-tuple per item, see above
         self.add_items(rules)
+###### MODEL STRUCTURES ###### 
 
+###### CORE OBJECT AND PARSING FRONT-END ######
 # Now onto the actual model and parsing
 class BNGModel:
     '''
@@ -429,7 +458,7 @@ class BNGModel:
             return xml_file
 
     def parse_xml(self, model_file):
-        # TODO: implement the SBML parser
+        # TODO: implement the XML parser
         print("Parsing the XML")
         with open(model_file, "r") as f:
             xml_str = "".join(f.readlines())
@@ -446,9 +475,14 @@ class BNGModel:
                 obs_list = xml_model[listkey]['Observable']
                 self.observables = Observables()
                 # we need to turn the patterns into strings
-                for od in obs_list:
-                    pattern = ObsPattern(od['ListOfPatterns'])
-                    self.observables.add_item((od['@type'], od['@name'], pattern))
+                if isinstance(obs_list, list):
+                    for od in obs_list:
+                        pattern = ObsPattern(od['ListOfPatterns'])
+                        self.observables.add_item((od['@type'], od['@name'], pattern))
+                else: 
+                    pattern = ObsPattern(obs_list)
+                    self.observables.add_item((obs_list['@type'], obs_list['@name'], pattern))
+
                 self.active_blocks.append("observables")
             elif listkey == "ListOfCompartments":
                 comp_list = xml_model[listkey]
@@ -474,9 +508,8 @@ class BNGModel:
                 self.rules = Rules()
                 # TODO: We need to turn these into strings
                 for rd in rrules_list:
-                    # we will need a 5-tuple
+                    # we will need a 4-tuple
                     rpattern = RulePattern(rd)
-                    IPython.embed()
                     self.rules.add_item(rpattern.item_tuple)
                 self.active_blocks.append("rules")
             elif listkey == "ListOfFunctions":
@@ -620,16 +653,21 @@ class BNGModel:
         # print(compartments)
         pass
 
-    def write_model(self):
+    def write_model(self, file_name):
         '''
-        write the model to str
+        write the model to file 
         '''
         model_str = ""
         for block in self.active_blocks:
             model_str += str(getattr(self, block))
-        print(model_str)
+        # print(model_str)
+        with open(file_name, 'w') as f:
+            f.write(model_str)
+###### CORE OBJECT AND PARSING FRONT-END ######
 
 if __name__ == "__main__":
     # model = BNGModel("validation/FceRI_ji.bngl")
-    model = BNGModel("FceRI_ji.xml")
+    # model = BNGModel("FceRI_ji.xml")
+    # model = BNGModel("egfr_net.bngl")
+    model = BNGModel("egfr_net.xml")
     # IPython.embed()
