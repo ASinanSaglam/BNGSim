@@ -8,67 +8,154 @@ class Pattern:
         self.pattern_xml = pattern_xml
         self.string = self.resolve_xml(self.pattern_xml)
 
+    def ___repr__(self):
+        return self.string
+
     def __str__(self):
         return self.string
 
-    def mol_to_str(self, mol_xml):
+    def tpls_from_bond(self, bond):
+        s1 = bond["@site1"] 
+        s2 = bond["@site2"]
+        oid, pid, mid, cid = s1.split("_")
+        pid = pid.replace("P","")
+        mid = mid.replace("M","")
+        cid = cid.replace("C","")
+        s1_tpl = (int(pid), int(mid), int(cid))
+        oid, pid, mid, cid = s2.split("_")
+        pid = pid.replace("P","")
+        mid = mid.replace("M","")
+        cid = cid.replace("C","")
+        s2_tpl = (int(pid), int(mid), int(cid))
+        return (s1_tpl, s2_tpl) 
+
+    def mol_to_str(self, mol_xml, bonds=None):
+        # TODO: Document, especially the bond mechanism
         if not isinstance(mol_xml, list):
             mol_str = mol_xml["@name"] + "("
             if "ListOfComponents" in mol_xml:
-                mol_str += self.comp_to_str(mol_xml["ListOfComponents"]["Component"])
+                # Single molecule can't have "bonds" from 
+                # the bond list
+                comp_str = self.comp_to_str(mol_xml["ListOfComponents"]["Component"])
+                mol_str += comp_str
             mol_str += ")"
         else:
             # this means we have multiple molecules bonding
             mol_str = ""
+            bonds_to_pass = {}
             for imol, mol in enumerate(mol_xml):
+                if bonds is not None:
+                    mol_id = int(mol["@id"].split("_")[-1].replace("M",""))
+                    mol_bonds = list(filter(lambda x: x[0][0][1] == mol_id or x[0][1][1] == mol_id, bonds))
+                    for imb, mol_bond in enumerate(mol_bonds):
+                        if mol_bond[0][0][1] == mol_id:
+                            comp_id, bond_id = mol_bond[0][0][2], mol_bond[1]
+                            bonds_to_pass[comp_id] = bond_id
+                        elif mol_bond[0][1][1] == mol_id:
+                            comp_id, bond_id = mol_bond[0][1][2], mol_bond[1]
+                            bonds_to_pass[comp_id] = bond_id
                 if imol > 0:
                     # complexing
                     mol_str += "."
                 mol_str += mol["@name"] + "("
                 if "ListOfComponents" in mol:
-                    mol_str += self.comp_to_str(mol['ListOfComponents']['Component'])
+                    if len(bonds_to_pass) > 0:
+                        comp_str = self.comp_to_str(mol['ListOfComponents']['Component'], bonds=bonds_to_pass)
+                    else: 
+                        comp_str = self.comp_to_str(mol['ListOfComponents']['Component'])
+                    mol_str += comp_str
                 mol_str += ")"
         return mol_str
 
-    def comp_to_str(self, comp_xml):
+    def comp_to_str(self, comp_xml, bonds=None):
+        # bonds = compartment id, bond id 
         # comp xml can be a list or a dict
-        if not '@name' in comp_xml:
+        if isinstance(comp_xml, list):
             # we have multiple and this is a list
             comp_str = ""
             for icomp, comp in enumerate(comp_xml):
+                comp_id = int(comp["@id"].split("_")[-1].replace("C",""))
                 if icomp > 0:
                     comp_str += ","
                 comp_str += comp['@name']
                 if "@state" in comp:
                     comp_str += "~{}".format(comp['@state'])
                 if comp["@numberOfBonds"] != '0':
-                    comp_str += "!{}".format(comp['@numberOfBonds'])
+                    num_bonds = comp["@numberOfBonds"]
+                    try: 
+                        num_bond = int(num_bonds)
+                        if bonds is not None:
+                            bond_id = bonds[comp_id]
+                        else: 
+                            print("we have a bond but no bond id?")
+                            bond_id = num_bond
+                        comp_str += "!{}".format(bond_id)
+                    except ValueError:
+                        comp_str += "!{}".format(num_bonds)
         else:
             # single comp, this is a dict
             comp_str = comp_xml['@name']
+            comp_id = int(comp_xml["@id"].split("_")[-1].replace("C",""))
             if "@state" in comp_xml:
                 comp_str += "~{}".format(comp_xml['@state'])
             if comp_xml['@numberOfBonds'] != '0':
-                comp_str += "!{}".format(comp_xml['@numberOfBonds'])
+                num_bonds = comp_xml["@numberOfBonds"]
+                try: 
+                    num_bond = int(num_bonds)
+                    if bonds is not None:
+                        bond_id = bonds[comp_id]
+                    else: 
+                        print("we have a bond but no bond id")
+                        bond_id = num_bond
+                    comp_str += "!{}".format(bond_id)
+                except ValueError:
+                    comp_str += "!{}".format(num_bonds)
         return comp_str
 
 class ObsPattern(Pattern):
     def __init__(self, pattern_xml):
         super().__init__(pattern_xml)
 
-    def resolve_xml(self, xml_obs):
-        patterns = xml_obs['Pattern']
+    def resolve_xml(self, obs_xml):
+        patterns = obs_xml['Pattern']
         if isinstance(patterns, list):
             # we have multiple stuff so this becomes a list
             obs_str = ""
             for ipattern, pattern in enumerate(patterns): 
+                # 
+                bonds_list = []
+                if "ListOfBonds" in pattern:
+                    bonds = pattern["ListOfBonds"]["Bond"]
+                    if isinstance(bonds, list):
+                        for ibond, bond in enumerate(bonds): 
+                            bonds_list.append((self.tpls_from_bond(bond), ibond+1))
+                    else:
+                        bonds_list.append((self.tpls_from_bond(bonds), 1))
+                # 
                 if ipattern > 0:
                     obs_str += ","
                 mol = pattern['ListOfMolecules']['Molecule']
-                obs_str += self.mol_to_str(mol) 
+                if len(bonds_list) > 0:
+                    bonds_to_pass = list(filter(lambda x: x[0][0][0] == ipattern+1, bonds_list))
+                    obs_res = self.mol_to_str(mol, bonds=bonds_to_pass) 
+                else:
+                    obs_res = self.mol_to_str(mol)
+                obs_str += obs_res
         else:
+            bonds_list = []
+            if "ListOfBonds" in patterns:
+                bonds = patterns["ListOfBonds"]["Bond"]
+                if isinstance(bonds, list):
+                    for ibond, bond in enumerate(bonds): 
+                        bonds_list.append((self.tpls_from_bond(bond), ibond+1))
+                else:
+                    bonds_list.append((self.tpls_from_bond(bonds), 1))
             mol = patterns['ListOfMolecules']["Molecule"]
-            obs_str = self.mol_to_str(mol)
+            if len(bonds_list) > 0:
+                bonds_to_pass = list(filter(lambda x: x[0][0][0] == 1, bonds_list))
+                obs_str = self.mol_to_str(mol, bonds=bonds_to_pass)
+            else:
+                obs_str = self.mol_to_str(mol)
         return obs_str
 
 class MolTypePattern(Pattern):
@@ -95,6 +182,7 @@ class MolTypePattern(Pattern):
         return molt_str
 
 class RulePattern(Pattern):
+    # TODO: Add bond handling
     def __init__(self, pattern_xml):
         super().__init__(pattern_xml)
 
@@ -133,10 +221,12 @@ class RulePattern(Pattern):
                 for ireact, react in enumerate(side_list):
                     if ireact > 0:
                         react_str += " + "
-                    react_str += self.mol_to_str(react['ListOfMolecules']['Molecule'])
+                    react_res = self.mol_to_str(react['ListOfMolecules']['Molecule'])
+                    react_str += react_res
             else: 
                 # TODO: a single item? 
-                react_str = self.mol_to_str(side_list['ListOfMolecules']['Molecule'])
+                react_res = self.mol_to_str(side_list['ListOfMolecules']['Molecule'])
+                react_str = react_res
             return react_str
         elif "ProductPattern" in side_xml:
             side_list = side_xml['ProductPattern']
@@ -146,10 +236,12 @@ class RulePattern(Pattern):
                 for iprod, prod in enumerate(side_list):
                     if iprod > 0:
                         prod_str += " + "
-                    prod_str += self.mol_to_str(prod['ListOfMolecules']['Molecule'])
+                    prod_res = self.mol_to_str(prod['ListOfMolecules']['Molecule'])
+                    prod_str += prod_res
             else: 
                 # TODO: a single item? 
-                prod_str = self.mol_to_str(side_list['ListOfMolecules']['Molecule'])
+                prod_res = self.mol_to_str(side_list['ListOfMolecules']['Molecule'])
+                prod_str = prod_res
             return prod_str
         else: 
             print("do not recognize XML: {}".format(side_xml))
@@ -234,6 +326,7 @@ class Parameters(ModelBlock):
         self.add_items(params)
 
 class Species(ModelBlock):
+    #TODO: Add bond handling
     '''
     Class containing species
     '''
@@ -507,16 +600,18 @@ class BNGModel:
                 rrules_list = xml_model[listkey]["ReactionRule"]
                 self.rules = Rules()
                 # TODO: We need to turn these into strings
-                for rd in rrules_list:
-                    # we will need a 4-tuple
-                    rpattern = RulePattern(rd)
-                    self.rules.add_item(rpattern.item_tuple)
-                self.active_blocks.append("rules")
+                # FIXME: Temporarily passing this to 
+                # fix observables
+                #for rd in rrules_list:
+                #    # we will need a 4-tuple
+                #    rpattern = RulePattern(rd)
+                #    self.rules.add_item(rpattern.item_tuple)
+                #self.active_blocks.append("rules")
             elif listkey == "ListOfFunctions":
                 #TODO: Implement functions
                 pass
         # Tons more work to do with implementing XML parsing
-        IPython.embed()
+        # IPython.embed()
 
     def __str__(self):
         '''
@@ -670,4 +765,15 @@ if __name__ == "__main__":
     # model = BNGModel("FceRI_ji.xml")
     # model = BNGModel("egfr_net.bngl")
     model = BNGModel("egfr_net.xml")
-    # IPython.embed()
+    IPython.embed()
+    # os.chdir("validation")
+    # bngl_list = os.listdir(os.getcwd())
+    # bngl_list = filter(lambda x: x.endswith(".bngl"), bngl_list)
+    # with open("test_res.txt", "w") as f:
+    #     for bngl in bngl_list:
+    #         print("Working on {}".format(bngl))
+    #         try:
+    #             m = BNGModel(bngl)
+    #         except:
+    #             f.write(("Failed at {}\n".format(bngl)))
+                # IPython.embed()
