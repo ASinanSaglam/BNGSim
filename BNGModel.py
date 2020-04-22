@@ -1,6 +1,6 @@
 import re, functools, subprocess, os, xmltodict, sys
 import BNGUtils
-from XMLPatterns import ObsPattern, MolTypePattern, RulePattern
+from XMLPatterns import ObsPattern, MolTypePattern, RulePattern, FuncPattern
 from ModelStructs import Parameters, Species, MoleculeTypes, Observables, Functions,Compartments, Rules
 
 ###### CORE OBJECT AND PARSING FRONT-END ######
@@ -166,9 +166,11 @@ class BNGModel:
                     funcs = func_list['Function']
                     if isinstance(funcs, list):
                          for func in funcs:
-                             self.functions.add_item((func['@id'],func['Expression']))
+                             fpatt = FuncPattern(func)
+                             self.functions.add_item(fpatt.item_tuple)
                     else:
-                         self.functions.add_item((funcs['@id'],funcs['Expression']))
+                         fpatt = FuncPattern(funcs)
+                         self.functions.add_item(fpatt.item_tuple)
                     self.active_blocks.append("functions")
         # And that's the end of parsing
 
@@ -313,9 +315,9 @@ if __name__ == "__main__":
     # model = BNGModel("validation/FceRI_ji.bngl")
     # model = BNGModel("FceRI_ji.xml")
     # model = BNGModel("egfr_net.bngl")
-    model = BNGModel("egfr_net.xml")
+    # model = BNGModel("egfr_net.xml")
     # model = BNGModel("compart.bngl")
-    # model = BNGModel("func.bngl")
+    model = BNGModel("func.bngl")
     import IPython
     IPython.embed()
     # with open("test.bngl", 'w') as f:

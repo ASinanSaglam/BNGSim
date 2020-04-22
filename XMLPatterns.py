@@ -188,4 +188,35 @@ class RulePattern(Pattern):
             return prod_str
         else: 
             print("do not recognize XML: {}".format(side_xml))
+
+class FuncPattern(Pattern):
+    def __init__(self, pattern_xml):
+        super().__init__(pattern_xml)
+
+    def resolve_xml(self, func_xml):
+        fname = func_xml['@id']
+        expression = func_xml['Expression']
+        args = []
+        if 'ListOfArguments' in func_xml:
+            args = self.get_arguments(func_xml['ListOfArguments']['Argument'])
+        expr = func_xml['Expression']
+        func_str = fname + "("
+        if len(args) > 0:
+            for iarg, arg in enumerate(args):
+                if iarg > 0:
+                    func_str += ","
+                func_str += arg
+        func_str += ")"
+        self.item_tuple = (func_str, expression)
+        full_str = "{} = {}".format(func_str, expression)
+        return full_str 
+
+    def get_arguments(self, arg_xml):
+        args = []
+        if isinstance(arg_xml, list):
+            for arg in arg_xml:
+                args.append(arg['@id'])
+            return args
+        else:
+            return [arg_xml['@id']]
 ###### PATTERNS ###### 
