@@ -157,27 +157,27 @@ class MolTypePattern(Pattern):
     def __init__(self, pattern_xml):
         super().__init__(pattern_xml)
 
-    def resolve_xml(self, xml_molt):
-        molt_str = xml_molt['@id'] + "("
-        comp_dict = xml_molt['ListOfComponentTypes']['ComponentType']
-        if '@id' in comp_dict:
-            molt_str += comp_dict['@id']
-        else:
-            # multiple components
-            for icomp, comp in enumerate(comp_dict):
-                if icomp > 0:
-                    molt_str += ","
-                molt_str += comp['@id']
-                if "ListOfAllowedStates" in comp:
-                    # we have states
-                    al_states = comp['ListOfAllowedStates']['AllowedState']
-                    for istate, state in enumerate(al_states):
-                        molt_str += "~{}".format(state['@id'])
+    def resolve_xml(self, molt_xml):
+        molt_str = molt_xml['@id'] + "("
+        if 'ListOfComponentTypes' in molt_xml:
+            comp_dict = molt_xml['ListOfComponentTypes']['ComponentType']
+            if '@id' in comp_dict:
+                molt_str += comp_dict['@id']
+            else:
+                # multiple components
+                for icomp, comp in enumerate(comp_dict):
+                    if icomp > 0:
+                        molt_str += ","
+                    molt_str += comp['@id']
+                    if "ListOfAllowedStates" in comp:
+                        # we have states
+                        al_states = comp['ListOfAllowedStates']['AllowedState']
+                        for istate, state in enumerate(al_states):
+                            molt_str += "~{}".format(state['@id'])
         molt_str += ")"
         return molt_str
 
 class RulePattern(Pattern):
-    # TODO: Add bond handling
     def __init__(self, pattern_xml):
         super().__init__(pattern_xml)
 
@@ -193,16 +193,18 @@ class RulePattern(Pattern):
         # 
         # We need to set self.item_tuple to 
         # (rule_name, LHS, RHS, rate_law)
-        self.item_tuple = (rule_name, lhs, rhs, rate_law)
+        self.item_tuple = [rule_name, lhs, "->", rhs, rate_law]
         return "{}: {} -> {} {}".format(rule_name, lhs, rhs, rate_law)
 
     def resolve_ratelaw(self, rate_xml):
         rate_type = rate_xml['@type']
-        rate_cts_xml = rate_xml['ListOfRateConstants']
-        # TODO: what happens if this is not just a simple 
-        # rate constant? Probably this becomes a list 
-        # and we'll fail right here.
-        rate_cts = rate_cts_xml['RateConstant']['@value']
+        if rate_type == 'Ele':
+            rate_cts_xml = rate_xml['ListOfRateConstants']
+            rate_cts = rate_cts_xml['RateConstant']['@value']
+        elif rate_type == 'Function':
+            rate_cts = rate_xml['@name']
+        else:
+            print("don't recognize rate law type")
         return rate_cts
 
     def resolve_rxn_side(self, side_xml):
@@ -443,12 +445,9 @@ class Functions(ModelBlock):
         # overwrites what the method returns when 
         # it's converted to string
         block_lines = ["\nbegin {}".format(self.name)]
-        print(self._item_dict)
         for item in self._item_dict.keys():
             block_lines.append("  " + 
-                    "{} {} {}".format(self._item_dict[item][0],
-                                      item,
-                                      self._item_dict[item][1]))
+                    "{} = {}".format(item, self._item_dict[item]))
         block_lines.append("end {}\n".format(self.name))
         return "\n".join(block_lines)
 
@@ -459,20 +458,47 @@ class Functions(ModelBlock):
         functions = list(map(lambda x: x.split("="), functions))
         self.functions.add_items(functions)
 
+class Compartments(ModelBlock):
+    '''
+    Class for compartments
+    '''
+    def __init__(self):
+        super().__init__()
+        self.name = "compartments"
+
+    def __str__(self):
+        # overwrites what the method returns when 
+        # it's converted to string
+        block_lines = ["\nbegin {}".format(self.name)]
+        for item in self._item_dict.keys():
+            comp_line = "  {} {} {}".format(item, 
+                            self._item_dict[item][0],
+                            self._item_dict[item][1])
+            if self._item_dict[item][2] is not None:
+                comp_line += " {}".format(self._item_dict[item][2])
+            block_lines.append(comp_line)
+        block_lines.append("end {}\n".format(self.name))
+        return "\n".join(block_lines)
+
+    def add_item(self, item_tpl):
+        name, dim, size, outside = item_tpl
+        self._item_dict[name] = [dim, size, outside]
+
+    def parse_block(self, block):
+        raise NotImplemented
+
 class Rules(ModelBlock):
     def __init__(self):
         super().__init__()
         self.name = "reaction rules"
 
     def add_item(self, item_tpl):
-        # TODO: handle this entirely differently and 
-        # properly parse rules
         '''
         A reaction rule, requires a 5-tuple
-        (rule_name, LHS, RHS, rate_law)
+        (rule_name, LHS, rxn_type, RHS, rate_law)
         '''
-        rule_name, lhs, rhs, rate_law = item_tpl
-        self._item_dict[rule_name] = (lhs, rhs, rate_law)
+        rule_name, lhs, rxn_type, rhs, rate_law = item_tpl
+        self._item_dict[rule_name] = [lhs, rxn_type, rhs, rate_law]
 
     def __str__(self):
         # TODO: printing also needs a lot of adjusting
@@ -482,10 +508,18 @@ class Rules(ModelBlock):
             rule_str = ""
             if item != "":
                 rule_str += "  {}: ".format(item)
+            # LHS
             rule_str += rule_tpl[0]
-            rule_str += " -> "
-            rule_str += rule_tpl[1] 
-            rule_str += " {}".format(rule_tpl[2])
+            # Rxn type
+            rule_str += " {} ".format(rule_tpl[1])
+            # RHS
+            rule_str += rule_tpl[2] 
+            # Rate law, adjusted according to type
+            rxn_type = rule_tpl[1]
+            if rxn_type == "->":
+                rule_str += " {}".format(rule_tpl[3])
+            elif rxn_type =="<->":
+                rule_str += " {},{}".format(rule_tpl[3][0], rule_tpl[3][1])
             block_lines.append(rule_str)
         block_lines.append("end {}\n".format(self.name))
         return "\n".join(block_lines)
@@ -499,8 +533,35 @@ class Rules(ModelBlock):
         rules = list(map(self.strip_comment, block))
         # split 
         rules = list(map(lambda x: " ".join(x.split(" ")), rules))
-        # FIXME: This needs a 4-tuple per item, see above
+        # FIXME: This needs a 5-tuple per item, see above
         self.add_items(rules)
+
+    def consolidate_rules(self):
+        '''
+        Generated XML only has unidirectional rules
+        and uses "_reverse_" tag to make bidirectional 
+        rules for NFSim. Take all the "_reverse_" tagged
+        rules and convert them to bidirectional rules
+        '''
+        delete_list = []
+        for item_key in self._item_dict:
+            rxn_list = self._item_dict[item_key]
+            if item_key.startswith("_reverse_"):
+                # this is the reverse of another reaction
+                reverse_of = item_key.replace("_reverse_", "")
+                # ensure we have the original
+                if reverse_of in self._item_dict:
+                    # make bidirectional
+                    self._item_dict[reverse_of][1] = "<->"
+                    # add rate law
+                    r1 = self._item_dict[reverse_of][3] 
+                    r2 = rxn_list[3]
+                    self._item_dict[reverse_of][3] = (r1,r2)
+                    # mark reverse for deletion
+                    delete_list.append(item_key)
+        # delete items marked for deletion
+        for del_item in delete_list:
+            self._item_dict.pop(del_item)
 ###### MODEL STRUCTURES ###### 
 
 ###### CORE OBJECT AND PARSING FRONT-END ######
@@ -564,8 +625,11 @@ class BNGModel:
             if listkey == "ListOfParameters":
                 param_list = xml_model[listkey]['Parameter']
                 self.parameters = Parameters()
-                for pd in param_list:
-                    self.parameters.add_item((pd['@id'],pd['@value']))
+                if isinstance(param_list, list):
+                    for pd in param_list:
+                        self.parameters.add_item((pd['@id'],pd['@value']))
+                else:
+                    self.parameters.add_item((param_list['@id'], param_list['@value']))
                 self.active_blocks.append("parameters")
             elif listkey == "ListOfObservables":
                 obs_list = xml_model[listkey]['Observable']
@@ -583,13 +647,36 @@ class BNGModel:
             elif listkey == "ListOfCompartments":
                 comp_list = xml_model[listkey]
                 if comp_list is not None:
-                    # TODO: implement compartment parsing
-                    pass
+                    self.compartments = Compartments()
+                    comps = comp_list['compartment']
+                    if isinstance(comps, list):
+                        for comp in comps:
+                            cname = comp['@id']
+                            dim = comp['@spatialDimensions']
+                            size = comp['@size']
+                            if '@outside' in comp:
+                                outside = comp['@outside']
+                            else:
+                                outside = None
+                            self.compartments.add_item( (cname, dim, size, outside) )
+                    else:
+                        cname = comp['@id']
+                        dim = comp['@spatialDimensions']
+                        size = comp['@size']
+                        if '@outside' in comp:
+                            outside = comp['@outside']
+                        else:
+                            outside = None
+                        self.compartments.add_item( (cname, dim, size, outside) )
                     self.active_blocks.append("compartments")
             elif listkey == "ListOfMoleculeTypes":
                 mtypes_list = xml_model[listkey]["MoleculeType"]
                 self.moltypes = MoleculeTypes()
-                for md in mtypes_list:
+                if isinstance(mtypes_list, list):
+                    for md in mtypes_list:
+                        pattern = MolTypePattern(md)
+                        self.moltypes.add_item((pattern,))
+                else:
                     pattern = MolTypePattern(md)
                     self.moltypes.add_item((pattern,))
                 self.active_blocks.append("moltypes")
@@ -605,19 +692,25 @@ class BNGModel:
             elif listkey == "ListOfReactionRules":
                 rrules_list = xml_model[listkey]["ReactionRule"]
                 self.rules = Rules()
-                # TODO: We need to turn these into strings
-                # FIXME: Temporarily passing this to 
-                # fix observables
                 for rd in rrules_list:
-                    # we will need a 4-tuple
                     rpattern = RulePattern(rd)
                     self.rules.add_item(rpattern.item_tuple)
+                self.rules.consolidate_rules()
                 self.active_blocks.append("rules")
             elif listkey == "ListOfFunctions":
-                #TODO: Implement functions
-                pass
-        # Tons more work to do with implementing XML parsing
-        # IPython.embed()
+                # TODO: Optional expression parsing?
+                # TODO: Add arguments correctly
+                func_list = xml_model[listkey]
+                if func_list is not None:
+                    self.functions = Functions()
+                    funcs = func_list['Function']
+                    if isinstance(funcs, list):
+                         for func in funcs:
+                             self.functions.add_item((func['@id'],func['Expression']))
+                    else:
+                         self.functions.add_item((funcs['@id'],funcs['Expression']))
+                    self.active_blocks.append("functions")
+        # And that's the end of parsing
 
     def __str__(self):
         '''
@@ -630,6 +723,10 @@ class BNGModel:
         return model_str
 
     def parse_bngl(self, bngl_file):
+        '''
+        very basic and incomplete direct BNGL parsing
+        TODO: complete a basic parsing of all blocks
+        '''
         with open(bngl_file, 'r') as bngl:
             bngl_lines = bngl.readlines()
 
@@ -768,10 +865,14 @@ class BNGModel:
 
 if __name__ == "__main__":
     # model = BNGModel("validation/FceRI_ji.bngl")
-    # model = BNGModel("FceRI_ji.xml")
+    #model = BNGModel("FceRI_ji.xml")
     # model = BNGModel("egfr_net.bngl")
     model = BNGModel("egfr_net.xml")
-    IPython.embed()
+    # model = BNGModel("compart.bngl")
+    # model = BNGModel("func.bngl")
+    #IPython.embed()
+    with open("test.bngl", 'w') as f:
+        f.write(str(model))
     # os.chdir("validation")
     # bngl_list = os.listdir(os.getcwd())
     # bngl_list = filter(lambda x: x.endswith(".bngl"), bngl_list)
