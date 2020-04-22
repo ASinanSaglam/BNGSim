@@ -2,7 +2,6 @@ import re, functools, subprocess, os, xmltodict, sys
 import BNGUtils
 from XMLPatterns import ObsPattern, MolTypePattern, RulePattern
 from ModelStructs import Parameters, Species, MoleculeTypes, Observables, Functions,Compartments, Rules
-import IPython
 
 ###### CORE OBJECT AND PARSING FRONT-END ######
 class BNGModel:
@@ -35,6 +34,10 @@ class BNGModel:
 
     def __repr__(self):
         return self.model_name
+
+    def __iter__(self):
+        active_ordered_blocks = [getattr(self,i) for i in self.block_order if i in self.active_blocks]
+        return active_ordered_blocks.__iter__()
 
     def parse_model(self, model_file):
         if self.BNGLmode and model_file.endswith(".bngl"):
@@ -313,6 +316,7 @@ if __name__ == "__main__":
     model = BNGModel("egfr_net.xml")
     # model = BNGModel("compart.bngl")
     # model = BNGModel("func.bngl")
+    import IPython
     IPython.embed()
     # with open("test.bngl", 'w') as f:
     #     f.write(str(model))

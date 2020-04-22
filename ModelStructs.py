@@ -5,13 +5,28 @@ class ModelBlock:
         self._item_dict = {}
 
     def __len__(self):
-        return len(self._item_dict.keys())
+        return len(self._item_dict)
 
     def __repr__(self):
         # overwrites what the class representation
         # shows the items in the model block in 
         # say ipython
         return str(self._item_dict)
+
+    def __getitem__(self, key):
+        return self._item_dict[key]
+
+    def __setitem__(self, key, value):
+        self._item_dict[key] = value
+
+    def __delitem__(self, key):
+        if key in self._item_dict:
+            self._item_dict.pop(key)
+        else: 
+            print("Item {} not found".format(key))
+
+    def __iter__(self):
+        return self._item_dict.keys().__iter__()
 
     def add_item(self, item_tpl):
         # TODO: try adding evaluation of the parameter here
@@ -50,10 +65,19 @@ class Parameters(ModelBlock):
         self.name = "parameters"
 
     def __setattr__(self, name, value):
+        changed = False
         if hasattr(self, "_item_dict"):
             if name in self._item_dict.keys():
-                self._item_dict[name] = value
-        self.__dict__[name] = value
+                try: 
+                    new_value = float(value)
+                    changed = True
+                    self._item_dict[name] = new_value
+                except:
+                    self._item_dict[name] = value
+        if changed:
+            self.__dict__[name] = new_value
+        else:
+            self.__dict__[name] = value
 
     def __str__(self):
         # overwrites what the method returns when 
@@ -99,12 +123,6 @@ class Species(ModelBlock):
         # basically the same as parameters 
         species = list(map(lambda x: x.split(), species))
         self.add_items(species)
-
-    def __getitem__(self, key):
-        return self._item_dict[key]
-
-    def __setitem__(self, key, value):
-        self._item_dict[key] = value
 
 class MoleculeTypes(ModelBlock):
     '''
@@ -273,13 +291,14 @@ class Rules(ModelBlock):
         # TODO: Update this so it parses the rules to at least
         # some extent. Don't need anything complicated, just need 
         # a barebones implementation 
+        # # strip comments
+        # rules = list(map(self.strip_comment, block))
+        # # split 
+        # rules = list(map(lambda x: " ".join(x.split(" ")), rules))
+        # # FIXME: This needs a 5-tuple per item, see above
+        # self.add_items(rules)
+        raise NotImplemented
 
-        # strip comments
-        rules = list(map(self.strip_comment, block))
-        # split 
-        rules = list(map(lambda x: " ".join(x.split(" ")), rules))
-        # FIXME: This needs a 5-tuple per item, see above
-        self.add_items(rules)
 
     def consolidate_rules(self):
         '''
