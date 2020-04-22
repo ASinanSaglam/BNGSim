@@ -7,7 +7,7 @@ class Pattern:
         self.bonds = Bonds()
         self.string = self.resolve_xml(self.pattern_xml)
 
-    def ___repr__(self):
+    def __repr__(self):
         return self.string
 
     def __str__(self):

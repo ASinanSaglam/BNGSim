@@ -1,23 +1,40 @@
 import re, functools, subprocess, os, xmltodict, sys
 import BNGUtils
 from XMLPatterns import ObsPattern, MolTypePattern, RulePattern
-from XMLStructs import Parameters, Species, MoleculeTypes, Observables, Functions,Compartments, Rules
+from ModelStructs import Parameters, Species, MoleculeTypes, Observables, Functions,Compartments, Rules
 import IPython
 
-
 ###### CORE OBJECT AND PARSING FRONT-END ######
-# Now onto the actual model and parsing
 class BNGModel:
     '''
     The full model
     '''
     def __init__(self, bngl_model, BNGPATH=None, BNGLmode=False):
         self.active_blocks = []
+        # We want blocks to be printed in the same order
+        # every time
+        self.block_order = ["parameters", "compartments", "moltypes", 
+                            "species", "observables", "functions", "rules"]
         self.BNGLmode = BNGLmode
         BNGPATH, bngexec = BNGUtils.find_BNG_path(BNGPATH)
         self.BNGPATH = BNGPATH
         self.bngexec = bngexec 
+        self.model_name = ""
         self.parse_model(bngl_model)
+
+    def __str__(self):
+        '''
+        write the model to str
+        '''
+        model_str = "begin model\n"
+        for block in self.block_order:
+            if block in self.active_blocks:
+                model_str += str(getattr(self, block))
+        model_str += "\nend model"
+        return model_str
+
+    def __repr__(self):
+        return self.model_name
 
     def parse_model(self, model_file):
         if self.BNGLmode and model_file.endswith(".bngl"):
@@ -56,12 +73,11 @@ class BNGModel:
             return xml_file
 
     def parse_xml(self, model_file):
-        # TODO: implement the XML parser
-        print("Parsing the XML")
         with open(model_file, "r") as f:
             xml_str = "".join(f.readlines())
         xml_dict = xmltodict.parse(xml_str)
         xml_model = xml_dict['sbml']['model']
+        self.model_name = xml_model['@id']
         for listkey in xml_model.keys():
             if listkey == "ListOfParameters":
                 param_list = xml_model[listkey]['Parameter']
@@ -153,16 +169,6 @@ class BNGModel:
                     self.active_blocks.append("functions")
         # And that's the end of parsing
 
-    def __str__(self):
-        '''
-        write the model to str
-        '''
-        model_str = "begin model\n"
-        for block in self.active_blocks:
-            model_str += str(getattr(self, block))
-        model_str += "\nend model"
-        return model_str
-
     def parse_bngl(self, bngl_file):
         '''
         very basic and incomplete direct BNGL parsing
@@ -175,9 +181,6 @@ class BNGModel:
         blocks["actions"] = []
         # getting all blocks
         # TODO: handle all possible commands and options
-        # options currently are:
-        # parameters, observables, compartments, species, 
-        # gen_network, simulate, rrules, molecule types
         for iline, line in enumerate(bngl_lines):
             # TODO: Add a if statement that skips empty 
             # lines and removes it from the block line list
@@ -299,14 +302,13 @@ class BNGModel:
         model_str = ""
         for block in self.active_blocks:
             model_str += str(getattr(self, block))
-        # print(model_str)
         with open(file_name, 'w') as f:
             f.write(model_str)
 ###### CORE OBJECT AND PARSING FRONT-END ######
 
 if __name__ == "__main__":
     # model = BNGModel("validation/FceRI_ji.bngl")
-    #model = BNGModel("FceRI_ji.xml")
+    # model = BNGModel("FceRI_ji.xml")
     # model = BNGModel("egfr_net.bngl")
     model = BNGModel("egfr_net.xml")
     # model = BNGModel("compart.bngl")
