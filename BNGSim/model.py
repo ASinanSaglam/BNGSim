@@ -43,6 +43,7 @@ class BNGModel:
         if self.BNGLmode and model_file.endswith(".bngl"):
             # forces the old code path that tries to
             # parse bngl
+            print("Parsing BNGL directly")
             self.parse_bngl(model_file)
         else:
             # this route runs BNG2.pl on the bngl and parses
@@ -50,8 +51,10 @@ class BNGModel:
             if model_file.endswith(".bngl"):
                 # TODO: Strip actions into a temp file
                 # then run the gen xml 
+                print("Attempting to generate XML")
                 model_file = self.generate_xml(model_file)
                 if model_file is not None:
+                    print("Parsing XML")
                     self.parse_xml(model_file)
                 else:
                     self.parse_bngl(model_file)
@@ -69,7 +72,8 @@ class BNGModel:
         stripped_bngl = self.strip_actions(model_file, temp_folder)
         # run with --xml 
         os.chdir(temp_folder)
-        rc = subprocess.run([self.bngexec, "--xml", stripped_bngl])
+        # TODO: Make output supression an option somewhere
+        rc = subprocess.run([self.bngexec, "--xml", stripped_bngl], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         if rc.returncode == 1:
             print("XML generation failed, trying the fallback parser")
             # go back to our original location
@@ -167,6 +171,7 @@ class BNGModel:
                     self.functions.parse_xml_block(funcs)
                     self.active_blocks.append("functions")
         # And that's the end of parsing
+        print("XML parsed")
 
     def parse_bngl(self, bngl_file):
         '''
@@ -225,6 +230,7 @@ class BNGModel:
                 blocks["actions"].append(bngl_lines[iline])
         # parse blocks
         self.parse_bngl_blocks(blocks)
+        print("BNGL parsed")
 
     def parse_bngl_blocks(self, blocks):
         # parameters, observables, compartments, species, 
