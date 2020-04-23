@@ -67,7 +67,7 @@ class BNGModel:
         stripped_bngl = self.strip_actions(model_file)
         rc = subprocess.run([self.bngexec, "--xml", stripped_bngl])
         if rc.returncode == 1:
-            print("SBML generation failed, trying the fallback parser")
+            print("XML generation failed, trying the fallback parser")
             return None
         else:
             # we should now have the XML file 
@@ -307,6 +307,12 @@ if __name__ == "__main__":
     bngl_list = filter(lambda x: x.endswith(".bngl"), bngl_list)
     for bngl in bngl_list:
         m = BNGModel(bngl)
+        with open('test.bngl', 'w') as f:
+            f.write(str(m))
+        rc = subprocess.run([m.bngexec, 'test.bngl'])
+        if rc.returncode == 1:
+            print("issues with the written bngl")
+            sys.exit()
     # with open("test_res.txt", "w") as f:
     #     for bngl in bngl_list:
     #         print("Working on {}".format(bngl))

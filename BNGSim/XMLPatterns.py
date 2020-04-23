@@ -48,10 +48,11 @@ class Pattern:
             # we have multiple and this is a list
             comp_str = ""
             for icomp, comp in enumerate(comp_xml):
-                comp_id = int(comp["@id"].split("_")[-1].replace("C",""))
                 if icomp > 0:
                     comp_str += ","
                 comp_str += comp['@name']
+                if "@label" in comp:
+                    comp_str += "%{}".format(comp['@label'])
                 if "@state" in comp:
                     comp_str += "~{}".format(comp['@state'])
                 if comp["@numberOfBonds"] != '0':
@@ -61,7 +62,8 @@ class Pattern:
         else:
             # single comp, this is a dict
             comp_str = comp_xml['@name']
-            comp_id = int(comp_xml["@id"].split("_")[-1].replace("C",""))
+            if "@label" in comp_xml:
+                comp_str += "%{}".format(comp_xml['@label'])
             if "@state" in comp_xml:
                 comp_str += "~{}".format(comp_xml['@state'])
             if comp_xml['@numberOfBonds'] != '0':
@@ -110,6 +112,14 @@ class MolTypePattern(Pattern):
             comp_dict = molt_xml['ListOfComponentTypes']['ComponentType']
             if '@id' in comp_dict:
                 molt_str += comp_dict['@id']
+                if "ListOfAllowedStates" in comp_dict:
+                    # we have states
+                    al_states = comp_dict['ListOfAllowedStates']['AllowedState']
+                    if isinstance(al_states, list):
+                        for istate, state in enumerate(al_states):
+                            molt_str += "~{}".format(state['@id'])
+                    else:
+                        molt_str += "~{}".format(al_states['@id'])
             else:
                 # multiple components
                 for icomp, comp in enumerate(comp_dict):
@@ -200,7 +210,6 @@ class RulePattern(Pattern):
                     react_str = ""
                 if "ListOfBonds" in side_list:
                     self.bonds.set_xml(side_list["ListOfBonds"]['Bond'])
-                # TODO: a single item? 
                 react_res = self.mol_to_str(side_list['ListOfMolecules']['Molecule'])
                 react_str += react_res
             return react_str
