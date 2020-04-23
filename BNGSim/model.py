@@ -1,4 +1,4 @@
-import re, functools, subprocess, os, xmltodict, sys, shutil
+import re, functools, subprocess, os, xmltodict, sys, shutil, tempfile
 from BNGSim.utils import find_BNG_path
 from BNGSim.structs import Parameters, Species, MoleculeTypes, Observables, Functions, Compartments, Rules
 
@@ -62,9 +62,11 @@ class BNGModel:
                 raise NotImplemented
 
     def generate_xml(self, model_file):
-        # TODO: Better file handling with tempfiles and 
-        # not having "_stripped" in name etc
-        stripped_bngl = self.strip_actions(model_file)
+        # temporary folder to work in
+        temp_folder = tempfile.mkdtemp()
+        # make a stripped copy without actions in the folder
+        stripped_bngl = self.strip_actions(model_file, temp_folder)
+        # run with --xml 
         rc = subprocess.run([self.bngexec, "--xml", stripped_bngl])
         if rc.returncode == 1:
             print("XML generation failed, trying the fallback parser")
@@ -74,24 +76,25 @@ class BNGModel:
             _, model_name = os.path.split(stripped_bngl)
             model_name = model_name.replace(".bngl", "")
             xml_file = model_name + ".xml"
-            move_to = model_name.replace("_stripped", "") + ".xml" 
-            shutil.move(xml_file, move_to)
-            return move_to 
+            return xml_file
 
-    def strip_actions(self, model_path):
+    def strip_actions(self, model_path, folder):
+        '''
+        Strips actions from a BNGL folder and makes a copy
+        into the given folder
+        '''
         # Get model name and setup path stuff
         path, model_file = os.path.split(model_path)
-        model_name = model_file.replace(".bngl","")
-        stripped_file = model_name + "_stripped.bngl"
         # open model and strip actions
         with open(model_path, 'r') as mf:
             # read and strip actions
             mlines = mf.readlines()
             stripped_lines = filter(lambda x: self._not_action(x), mlines)
         # open new file and write just the model
-        with open(os.path.join(path, stripped_file), 'w') as sf:
+        stripped_model = os.path.join(folder, model_file)
+        with open(stripped_model, 'w') as sf:
             sf.writelines(stripped_lines)
-        return stripped_file
+        return stripped_model 
 
     def _not_action(self, line):
         for action in self._action_list:
