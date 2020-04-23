@@ -1,2 +1,1 @@
-import BNGUilts
-from BNGModel import BNGModel
+from model import BNGModel

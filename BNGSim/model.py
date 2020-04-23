@@ -1,5 +1,5 @@
 import re, functools, subprocess, os, xmltodict, sys, shutil
-import BNGUtils
+from utils import find_BNG_path
 from ModelStructs import Parameters, Species, MoleculeTypes, Observables, Functions,Compartments, Rules
 
 ###### CORE OBJECT AND PARSING FRONT-END ######
@@ -15,7 +15,7 @@ class BNGModel:
         self.block_order = ["parameters", "compartments", "moltypes", 
                             "species", "observables", "functions", "rules"]
         self.BNGLmode = BNGLmode
-        BNGPATH, bngexec = BNGUtils.find_BNG_path(BNGPATH)
+        BNGPATH, bngexec = find_BNG_path(BNGPATH)
         self.BNGPATH = BNGPATH
         self.bngexec = bngexec 
         self.model_name = ""
