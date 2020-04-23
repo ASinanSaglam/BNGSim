@@ -62,21 +62,27 @@ class BNGModel:
                 raise NotImplemented
 
     def generate_xml(self, model_file):
+        cur_dir = os.getcwd()
         # temporary folder to work in
         temp_folder = tempfile.mkdtemp()
         # make a stripped copy without actions in the folder
         stripped_bngl = self.strip_actions(model_file, temp_folder)
         # run with --xml 
+        os.chdir(temp_folder)
         rc = subprocess.run([self.bngexec, "--xml", stripped_bngl])
         if rc.returncode == 1:
             print("XML generation failed, trying the fallback parser")
+            # go back to our original location
+            os.chdir(cur_dir)
             return None
         else:
             # we should now have the XML file 
-            _, model_name = os.path.split(stripped_bngl)
+            path, model_name = os.path.split(stripped_bngl)
             model_name = model_name.replace(".bngl", "")
             xml_file = model_name + ".xml"
-            return xml_file
+            # go back to our original location
+            os.chdir(cur_dir)
+            return os.path.join(path, xml_file)
 
     def strip_actions(self, model_path, folder):
         '''
