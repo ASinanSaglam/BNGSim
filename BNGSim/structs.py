@@ -1,4 +1,4 @@
-from XMLPatterns import ObsPattern, MolTypePattern, RulePattern, FuncPattern
+from BNGSim.patterns import ObsPattern, MolTypePattern, RulePattern, FuncPattern
 
 ###### MODEL STRUCTURES ###### 
 # Objects in the model

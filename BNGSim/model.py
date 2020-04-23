@@ -1,6 +1,6 @@
 import re, functools, subprocess, os, xmltodict, sys, shutil
-from utils import find_BNG_path
-from ModelStructs import Parameters, Species, MoleculeTypes, Observables, Functions,Compartments, Rules
+from BNGSim.utils import find_BNG_path
+from BNGSim.structs import Parameters, Species, MoleculeTypes, Observables, Functions, Compartments, Rules
 
 ###### CORE OBJECT AND PARSING FRONT-END ######
 class BNGModel:

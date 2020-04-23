@@ -1,4 +1,4 @@
-from XMLBonds import Bonds
+from BNGSim.bonds import Bonds
 
 ###### PATTERNS ###### 
 class Pattern:
