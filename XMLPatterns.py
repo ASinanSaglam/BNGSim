@@ -22,6 +22,8 @@ class Pattern:
                 comp_str = self.comp_to_str(mol_xml["ListOfComponents"]["Component"])
                 mol_str += comp_str
             mol_str += ")"
+            if '@compartment' in mol_xml:
+                mol_str += "@{}".format(mol_xml['@compartment'])
         else:
             # this means we have multiple molecules bonding
             mol_str = ""
@@ -35,6 +37,8 @@ class Pattern:
                     comp_str = self.comp_to_str(mol['ListOfComponents']['Component'])
                     mol_str += comp_str
                 mol_str += ")"
+                if '@compartment' in mol:
+                    mol_str += "@{}".format(mol['@compartment'])
         return mol_str
 
     def comp_to_str(self, comp_xml):
@@ -52,7 +56,8 @@ class Pattern:
                     comp_str += "~{}".format(comp['@state'])
                 if comp["@numberOfBonds"] != '0':
                     bond_id = self.bonds.get_bond_id(comp)
-                    comp_str += "!{}".format(bond_id)
+                    for bi in bond_id:
+                        comp_str += "!{}".format(bi)
         else:
             # single comp, this is a dict
             comp_str = comp_xml['@name']
@@ -61,7 +66,8 @@ class Pattern:
                 comp_str += "~{}".format(comp_xml['@state'])
             if comp_xml['@numberOfBonds'] != '0':
                 bond_id = self.bonds.get_bond_id(comp_xml)
-                comp_str += "!{}".format(bond_id)
+                for bi in bond_id:
+                    comp_str += "!{}".format(bi)
         return comp_str
 
 class ObsPattern(Pattern):
@@ -79,15 +85,19 @@ class ObsPattern(Pattern):
                     self.bonds.set_xml(pattern["ListOfBonds"]["Bond"])
                 if ipattern > 0:
                     obs_str += ","
+                if '@compartment' in pattern:
+                    obs_str += "@{}:".format(pattern['@compartment'])
                 mol = pattern['ListOfMolecules']['Molecule']
                 obs_res = self.mol_to_str(mol)
                 obs_str += obs_res
         else:
-            bonds_list = []
             if "ListOfBonds" in patterns:
                 self.bonds.set_xml(patterns["ListOfBonds"]["Bond"])
             mol = patterns['ListOfMolecules']["Molecule"]
-            obs_str = self.mol_to_str(mol)
+            obs_str = ""
+            if '@compartment' in patterns:
+                obs_str += "@{}:".format(patterns['@compartment'])
+            obs_str += self.mol_to_str(mol)
         return obs_str
 
 class MolTypePattern(Pattern):
@@ -109,8 +119,11 @@ class MolTypePattern(Pattern):
                     if "ListOfAllowedStates" in comp:
                         # we have states
                         al_states = comp['ListOfAllowedStates']['AllowedState']
-                        for istate, state in enumerate(al_states):
-                            molt_str += "~{}".format(state['@id'])
+                        if isinstance(al_states, list):
+                            for istate, state in enumerate(al_states):
+                                molt_str += "~{}".format(state['@id'])
+                        else:
+                            molt_str += "~{}".format(al_states['@id'])
         molt_str += ")"
         return molt_str
 
@@ -126,8 +139,9 @@ class RulePattern(Pattern):
         rule_name = pattern_xml['@name']
         lhs = self.resolve_rxn_side(pattern_xml['ListOfReactantPatterns'])
         rhs = self.resolve_rxn_side(pattern_xml['ListOfProductPatterns'])
+        if 'RateLaw' not in pattern_xml:
+            print("Rule seems to be missing a rate law, please make sure that XML exporter of BNGL supports whatever you are doing!")
         rate_law = self.resolve_ratelaw(pattern_xml['RateLaw'])
-        # 
         # We need to set self.item_tuple to 
         # (rule_name, LHS, RHS, rate_law)
         self.item_tuple = [rule_name, lhs, "->", rhs, rate_law]
@@ -140,18 +154,37 @@ class RulePattern(Pattern):
             rate_cts = rate_cts_xml['RateConstant']['@value']
         elif rate_type == 'Function':
             rate_cts = rate_xml['@name']
+        elif rate_type == 'MM' or rate_type == "Sat":
+            # A function type 
+            rate_cts = rate_type + "("
+            args = rate_xml['ListOfRateConstants']["RateConstant"]
+            if isinstance(args, list):
+                for iarg, arg in enumerate(args):
+                    if iarg > 0:
+                        rate_cts += ","
+                    rate_cts += arg["@value"]
+            else:
+                rate_cts += args["@value"]
+            rate_cts += ")"
         else:
             print("don't recognize rate law type")
+            import IPython
+            IPython.embed()
         return rate_cts
 
     def resolve_rxn_side(self, side_xml):
         # this is either reactant or product
-        if 'ReactantPattern' in side_xml:
+        if side_xml is None:
+            return "0"
+        elif 'ReactantPattern' in side_xml:
             # this is a lhs/reactant side
             side_list = side_xml['ReactantPattern']
             if isinstance(side_list, list):
                 # this is a list of reactants
-                react_str = ""
+                if '@compartment' in side_list:
+                    react_str = "@{}:".format(side_list['@compartment'])
+                else:
+                    react_str = ""
                 for ireact, react in enumerate(side_list):
                     if "ListOfBonds" in react:
                         self.bonds.set_xml(react["ListOfBonds"]['Bond'])
@@ -161,17 +194,24 @@ class RulePattern(Pattern):
                     react_res = self.mol_to_str(react['ListOfMolecules']['Molecule'])
                     react_str += react_res
             else: 
+                if '@compartment' in side_list:
+                    react_str = "@{}:".format(side_list['@compartment'])
+                else:
+                    react_str = ""
                 if "ListOfBonds" in side_list:
                     self.bonds.set_xml(side_list["ListOfBonds"]['Bond'])
                 # TODO: a single item? 
                 react_res = self.mol_to_str(side_list['ListOfMolecules']['Molecule'])
-                react_str = react_res
+                react_str += react_res
             return react_str
         elif "ProductPattern" in side_xml:
             side_list = side_xml['ProductPattern']
             if isinstance(side_list, list):
                 # this is a list of reactants
-                prod_str = ""
+                if '@compartment' in side_list:
+                    prod_str = "@{}:".format(side_list['@compartment'])
+                else:
+                    prod_str = ""
                 for iprod, prod in enumerate(side_list):
                     if "ListOfBonds" in prod:
                         self.bonds.set_xml(prod["ListOfBonds"]['Bond'])
@@ -180,14 +220,17 @@ class RulePattern(Pattern):
                     prod_res = self.mol_to_str(prod['ListOfMolecules']['Molecule'])
                     prod_str += prod_res
             else: 
-                # TODO: a single item? 
+                if '@compartment' in side_list:
+                    prod_str = "@{}:".format(side_list['@compartment'])
+                else:
+                    prod_str = ""
                 if "ListOfBonds" in side_list:
                     self.bonds.set_xml(side_list["ListOfBonds"]['Bond'])
                 prod_res = self.mol_to_str(side_list['ListOfMolecules']['Molecule'])
-                prod_str = prod_res
+                prod_str += prod_res
             return prod_str
         else: 
-            print("do not recognize XML: {}".format(side_xml))
+            print("Can't parse rule XML {}".format(side_xml))
 
 class FuncPattern(Pattern):
     def __init__(self, pattern_xml):

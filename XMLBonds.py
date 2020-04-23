@@ -45,18 +45,23 @@ class Bonds:
         return (s1_tpl, s2_tpl) 
 
     def resolve_xml(self, bonds_xml):
-        # OK, we want to unfuck this code. 
         # self.bonds_dict is a dictionary you can key
         # with the tuple taken from the ID and then 
         # get a bond ID cleanly
         if isinstance(bonds_xml, list):
             for ibond, bond in enumerate(bonds_xml): 
                 bond_partner_1, bond_partner_2 = self.tpls_from_bond(bond)
-                self.bonds_dict[bond_partner_1] = ibond+1
-                self.bonds_dict[bond_partner_2] = ibond+1
+                if bond_partner_1 not in self.bonds_dict:
+                    self.bonds_dict[bond_partner_1] = [ibond+1]
+                else:
+                    self.bonds_dict[bond_partner_1].append([ibond+1])
+                if bond_partner_2 not in self.bonds_dict:
+                    self.bonds_dict[bond_partner_2] = [ibond+1]
+                else:
+                    self.bonds_dict[bond_partner_2].append(ibond+1)
         else:
             bond_partner_1, bond_partner_2 = self.tpls_from_bond(bonds_xml)
-            self.bonds_dict[bond_partner_1] = 1
-            self.bonds_dict[bond_partner_2] = 1
+            self.bonds_dict[bond_partner_1] = [1]
+            self.bonds_dict[bond_partner_2] = [1]
 ###### BONDS #####
 

@@ -1,6 +1,5 @@
-import re, functools, subprocess, os, xmltodict, sys
+import re, functools, subprocess, os, xmltodict, sys, shutil
 import BNGUtils
-from XMLPatterns import ObsPattern, MolTypePattern, RulePattern, FuncPattern
 from ModelStructs import Parameters, Species, MoleculeTypes, Observables, Functions,Compartments, Rules
 
 ###### CORE OBJECT AND PARSING FRONT-END ######
@@ -12,6 +11,7 @@ class BNGModel:
         self.active_blocks = []
         # We want blocks to be printed in the same order
         # every time
+        self._action_list = ["generate_network(", "generate_hybrid_model(","simulate(", "simulate_ode(", "simulate_ssa(", "simulate_pla(", "simulate_nf(", "parameter_scan(", "bifurcate(", "readFile(", "writeFile(", "writeModel(", "writeNetwork(", "writeXML(", "writeSBML(", "writeMfile(", "writeMexfile(", "writeMDL(", "visualize(", "setConcentration(", "addConcentration(", "saveConcentration(", "resetConcentrations(", "setParameter(", "saveParameters(", "resetParameters(", "quit(", "setModelName(", "substanceUnits(", "version(", "setOption("]
         self.block_order = ["parameters", "compartments", "moltypes", 
                             "species", "observables", "functions", "rules"]
         self.BNGLmode = BNGLmode
@@ -48,6 +48,8 @@ class BNGModel:
             # this route runs BNG2.pl on the bngl and parses
             # the XML instead
             if model_file.endswith(".bngl"):
+                # TODO: Strip actions into a temp file
+                # then run the gen xml 
                 model_file = self.generate_xml(model_file)
                 if model_file is not None:
                     self.parse_xml(model_file)
@@ -60,20 +62,42 @@ class BNGModel:
                 raise NotImplemented
 
     def generate_xml(self, model_file):
-        # TODO: Make sure to delete all actions, this will
-        # run the model FIRST and then pull in the XML. Can 
-        # lead to a ton of generated species if there is are 
-        # commands in there
-        rc = subprocess.run([self.bngexec, "--xml", model_file])
+        # TODO: Better file handling with tempfiles and 
+        # not having "_stripped" in name etc
+        stripped_bngl = self.strip_actions(model_file)
+        rc = subprocess.run([self.bngexec, "--xml", stripped_bngl])
         if rc.returncode == 1:
             print("SBML generation failed, trying the fallback parser")
             return None
         else:
-            # we should now have the SBML file 
-            _, model_name = os.path.split(model_file)
+            # we should now have the XML file 
+            _, model_name = os.path.split(stripped_bngl)
             model_name = model_name.replace(".bngl", "")
             xml_file = model_name + ".xml"
-            return xml_file
+            move_to = model_name.replace("_stripped", "") + ".xml" 
+            shutil.move(xml_file, move_to)
+            return move_to 
+
+    def strip_actions(self, model_path):
+        # Get model name and setup path stuff
+        path, model_file = os.path.split(model_path)
+        model_name = model_file.replace(".bngl","")
+        stripped_file = model_name + "_stripped.bngl"
+        # open model and strip actions
+        with open(model_path, 'r') as mf:
+            # read and strip actions
+            mlines = mf.readlines()
+            stripped_lines = filter(lambda x: self._not_action(x), mlines)
+        # open new file and write just the model
+        with open(os.path.join(path, stripped_file), 'w') as sf:
+            sf.writelines(stripped_lines)
+        return stripped_file
+
+    def _not_action(self, line):
+        for action in self._action_list:
+            if action in line:
+                return False
+        return True
 
     def parse_xml(self, model_file):
         with open(model_file, "r") as f:
@@ -83,80 +107,47 @@ class BNGModel:
         self.model_name = xml_model['@id']
         for listkey in xml_model.keys():
             if listkey == "ListOfParameters":
-                param_list = xml_model[listkey]['Parameter']
-                self.parameters = Parameters()
-                if isinstance(param_list, list):
-                    for pd in param_list:
-                        self.parameters.add_item((pd['@id'],pd['@value']))
-                else:
-                    self.parameters.add_item((param_list['@id'], param_list['@value']))
-                self.active_blocks.append("parameters")
+                param_list = xml_model[listkey]
+                if param_list is not None:
+                    params = param_list['Parameter']
+                    self.parameters = Parameters()
+                    self.parameters.parse_xml_block(params)
+                    self.active_blocks.append("parameters")
             elif listkey == "ListOfObservables":
-                obs_list = xml_model[listkey]['Observable']
-                self.observables = Observables()
-                # we need to turn the patterns into strings
-                if isinstance(obs_list, list):
-                    for od in obs_list:
-                        pattern = ObsPattern(od['ListOfPatterns'])
-                        self.observables.add_item((od['@type'], od['@name'], pattern))
-                else: 
-                    pattern = ObsPattern(obs_list)
-                    self.observables.add_item((obs_list['@type'], obs_list['@name'], pattern))
-
-                self.active_blocks.append("observables")
+                obs_list = xml_model[listkey]
+                if obs_list is not None:
+                    obs = obs_list['Observable']
+                    self.observables = Observables()
+                    self.observables.parse_xml_block(obs)
+                    self.active_blocks.append("observables")
             elif listkey == "ListOfCompartments":
                 comp_list = xml_model[listkey]
                 if comp_list is not None:
                     self.compartments = Compartments()
                     comps = comp_list['compartment']
-                    if isinstance(comps, list):
-                        for comp in comps:
-                            cname = comp['@id']
-                            dim = comp['@spatialDimensions']
-                            size = comp['@size']
-                            if '@outside' in comp:
-                                outside = comp['@outside']
-                            else:
-                                outside = None
-                            self.compartments.add_item( (cname, dim, size, outside) )
-                    else:
-                        cname = comp['@id']
-                        dim = comp['@spatialDimensions']
-                        size = comp['@size']
-                        if '@outside' in comp:
-                            outside = comp['@outside']
-                        else:
-                            outside = None
-                        self.compartments.add_item( (cname, dim, size, outside) )
+                    self.compartments.parse_xml_block(comps)
                     self.active_blocks.append("compartments")
             elif listkey == "ListOfMoleculeTypes":
-                mtypes_list = xml_model[listkey]["MoleculeType"]
-                self.moltypes = MoleculeTypes()
-                if isinstance(mtypes_list, list):
-                    for md in mtypes_list:
-                        pattern = MolTypePattern(md)
-                        self.moltypes.add_item((pattern,))
-                else:
-                    pattern = MolTypePattern(md)
-                    self.moltypes.add_item((pattern,))
-                self.active_blocks.append("moltypes")
+                mtypes_list = xml_model[listkey]
+                if mtypes_list is not None:
+                    mtypes = mtypes_list["MoleculeType"]
+                    self.moltypes = MoleculeTypes()
+                    self.moltypes.parse_xml_block(mtypes)
+                    self.active_blocks.append("moltypes")
             elif listkey == "ListOfSpecies":
-                species_list = xml_model[listkey]["Species"]
-                self.species = Species()
-                #TODO: Eventually regenerate patterns 
-                # with bond handling from XML instead of 
-                # reading the name directly to stay consistent
-                for sd in species_list:
-                    self.species.add_item((sd['@name'],sd['@concentration']))
-                self.active_blocks.append("species")
+                species_list = xml_model[listkey]
+                if species_list is not None:
+                    species = species_list["Species"]
+                    self.species = Species()
+                    self.species.parse_xml_block(species)
+                    self.active_blocks.append("species")
             elif listkey == "ListOfReactionRules":
-                rrules_list = xml_model[listkey]["ReactionRule"]
-                self.rules = Rules()
-                for rd in rrules_list:
-                    rpattern = RulePattern(rd)
-                    self.rules.add_item(rpattern.item_tuple)
-                self.rules.consolidate_rules()
-                self.active_blocks.append("rules")
+                rrules_list = xml_model[listkey]
+                if rrules_list is not None:
+                    rrules = rrules_list["ReactionRule"]
+                    self.rules = Rules()
+                    self.rules.parse_xml_block(rrules)
+                    self.active_blocks.append("rules")
             elif listkey == "ListOfFunctions":
                 # TODO: Optional expression parsing?
                 # TODO: Add arguments correctly
@@ -164,13 +155,7 @@ class BNGModel:
                 if func_list is not None:
                     self.functions = Functions()
                     funcs = func_list['Function']
-                    if isinstance(funcs, list):
-                         for func in funcs:
-                             fpatt = FuncPattern(func)
-                             self.functions.add_item(fpatt.item_tuple)
-                    else:
-                         fpatt = FuncPattern(funcs)
-                         self.functions.add_item(fpatt.item_tuple)
+                    self.functions.parse_xml_block(funcs)
                     self.active_blocks.append("functions")
         # And that's the end of parsing
 
@@ -312,19 +297,16 @@ class BNGModel:
 ###### CORE OBJECT AND PARSING FRONT-END ######
 
 if __name__ == "__main__":
-    # model = BNGModel("validation/FceRI_ji.bngl")
-    # model = BNGModel("FceRI_ji.xml")
-    # model = BNGModel("egfr_net.bngl")
-    # model = BNGModel("egfr_net.xml")
-    # model = BNGModel("compart.bngl")
-    model = BNGModel("func.bngl")
-    import IPython
-    IPython.embed()
+    # model = BNGModel("test.bngl")
+    # import IPython
+    # IPython.embed()
     # with open("test.bngl", 'w') as f:
     #     f.write(str(model))
-    # os.chdir("validation")
-    # bngl_list = os.listdir(os.getcwd())
-    # bngl_list = filter(lambda x: x.endswith(".bngl"), bngl_list)
+    os.chdir("validation")
+    bngl_list = os.listdir(os.getcwd())
+    bngl_list = filter(lambda x: x.endswith(".bngl"), bngl_list)
+    for bngl in bngl_list:
+        m = BNGModel(bngl)
     # with open("test_res.txt", "w") as f:
     #     for bngl in bngl_list:
     #         print("Working on {}".format(bngl))
@@ -332,4 +314,4 @@ if __name__ == "__main__":
     #             m = BNGModel(bngl)
     #         except:
     #             f.write(("Failed at {}\n".format(bngl)))
-                # IPython.embed()
+    #             # IPython.embed()

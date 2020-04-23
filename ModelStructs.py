@@ -1,3 +1,5 @@
+from XMLPatterns import ObsPattern, MolTypePattern, RulePattern, FuncPattern
+
 ###### MODEL STRUCTURES ###### 
 # Objects in the model
 class ModelBlock:
@@ -100,6 +102,15 @@ class Parameters(ModelBlock):
         # now generate the param object
         self.add_items(params)
 
+    def parse_xml_block(self, block_xml):
+        # 
+        if isinstance(block_xml, list):
+            for b in block_xml:
+                self.add_item((b['@id'],b['@value']))
+        else:
+            self.add_item((block_xml['@id'], block_xml['@value']))
+        # 
+
 class Species(ModelBlock):
     '''
     Class containing species
@@ -123,6 +134,18 @@ class Species(ModelBlock):
         # basically the same as parameters 
         species = list(map(lambda x: x.split(), species))
         self.add_items(species)
+
+    def parse_xml_block(self, block_xml):
+        #TODO: Eventually regenerate patterns 
+        # with bond handling from XML instead of 
+        # reading the name directly to stay consistent
+        # TODO: Compartments
+        if isinstance(block_xml, list):
+            for sd in block_xml:
+                self.add_item((sd['@name'],sd['@concentration']))
+        else:
+            self.add_item((block_xml['@name'],block_xml['@concentration']))
+
 
 class MoleculeTypes(ModelBlock):
     '''
@@ -152,7 +175,17 @@ class MoleculeTypes(ModelBlock):
         moltypes = list(map(lambda x: x.split(), moltypes))
         self.add_items(moltypes)
 
+    def parse_xml_block(self, block_xml):
+        if isinstance(block_xml, list):
+            for md in block_xml:
+                pattern = MolTypePattern(md)
+                self.add_item((pattern,))
+        else:
+            pattern = MolTypePattern(block_xml)
+            self.add_item((pattern,))
+
 class Observables(ModelBlock):
+    # TODO: Compartments
     '''
     Class for observables
     '''
@@ -194,6 +227,17 @@ class Observables(ModelBlock):
         obs = list(map(lambda x: x.split(), obs))
         self.add_items(obs)
 
+    def parse_xml_block(self, block_xml):
+        #
+        if isinstance(block_xml, list):
+            for b in block_xml:
+                pattern = ObsPattern(b['ListOfPatterns'])
+                self.add_item((b['@type'], b['@name'], pattern))
+        else: 
+            pattern = ObsPattern(block_xml['ListOfPatterns'])
+            self.add_item((block_xml['@type'], block_xml['@name'], pattern))
+        # 
+
 
 class Functions(ModelBlock):
     '''
@@ -220,6 +264,15 @@ class Functions(ModelBlock):
         # split by = sign
         functions = list(map(lambda x: x.split("="), functions))
         self.functions.add_items(functions)
+
+    def parse_xml_block(self, block_xml):
+        if isinstance(block_xml, list):
+             for func in block_xml:
+                 fpatt = FuncPattern(func)
+                 self.add_item(fpatt.item_tuple)
+        else:
+             fpatt = FuncPattern(block_xml)
+             self.add_item(fpatt.item_tuple)
 
 class Compartments(ModelBlock):
     '''
@@ -249,6 +302,29 @@ class Compartments(ModelBlock):
 
     def parse_block(self, block):
         raise NotImplemented
+
+    def parse_xml_block(self, block_xml):
+        # 
+        if isinstance(block_xml, list):
+            for comp in block_xml:
+                cname = comp['@id']
+                dim = comp['@spatialDimensions']
+                size = comp['@size']
+                if '@outside' in comp:
+                    outside = comp['@outside']
+                else:
+                    outside = None
+                self.add_item( (cname, dim, size, outside) )
+        else:
+            cname = block_xml['@id']
+            dim = block_xml['@spatialDimensions']
+            size = block_xml['@size']
+            if '@outside' in block_xml:
+                outside = block_xml['@outside']
+            else:
+                outside = None
+            self.add_item( (cname, dim, size, outside) )
+        #
 
 class Rules(ModelBlock):
     def __init__(self):
@@ -299,6 +375,15 @@ class Rules(ModelBlock):
         # self.add_items(rules)
         raise NotImplemented
 
+    def parse_xml_block(self, block_xml):
+        if isinstance(block_xml, list):
+            for rd in block_xml:
+                rpattern = RulePattern(rd)
+                self.add_item(rpattern.item_tuple)
+        else:
+            rpattern = RulePattern(block_xml)
+            self.add_item(rpattern.item_tuple)
+        self.consolidate_rules()
 
     def consolidate_rules(self):
         '''
