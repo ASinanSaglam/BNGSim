@@ -140,6 +140,19 @@ class ObsPattern(Pattern):
             obs_str += self.mol_to_str(mol)
         return obs_str
 
+class SpeciesPattern(Pattern):
+    def __init__(self, pattern_xml):
+        super().__init__(pattern_xml)
+
+    def resolve_xml(self, spec_xml):
+        pattern = spec_xml['ListOfMolecules']['Molecule']
+        # this shouldn't be a list
+        if isinstance(pattern, list):
+            print("species pattern shouldn't be a list")
+        else:
+            spec_str = self.mol_to_str(pattern)
+        return spec_str
+
 class MolTypePattern(Pattern):
     def __init__(self, pattern_xml):
         super().__init__(pattern_xml)

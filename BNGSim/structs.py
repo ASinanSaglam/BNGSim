@@ -1,4 +1,4 @@
-from BNGSim.patterns import ObsPattern, MolTypePattern, RulePattern, FuncPattern
+from BNGSim.patterns import ObsPattern, MolTypePattern, RulePattern, FuncPattern, SpeciesPattern
 
 ###### MODEL STRUCTURES ###### 
 # Objects in the model
@@ -128,6 +128,17 @@ class Species(ModelBlock):
         block_lines.append("end {}\n".format(self.name))
         return "\n".join(block_lines)
 
+    def __getitem__(self, key):
+        # our keys are pattern objects
+        for ikey in self._item_dict:
+            if key == ikey.string:
+                return self._item_dict[ikey]
+
+    def __setitem__(self, key, value):
+        for ikey in self._item_dict:
+            if key == ikey.string:
+                self._item_dict[ikey] = value
+
     def parse_block(self, block):
         # strip comments 
         species = list(map(self.strip_comment, block))
@@ -144,10 +155,15 @@ class Species(ModelBlock):
         # seems uncommon currently
         if isinstance(block_xml, list):
             for sd in block_xml:
-                self.add_item((sd['@name'],sd['@concentration']))
+                pattern = SpeciesPattern(sd)
+                self.add_item((pattern,sd['@concentration']))
         else:
-            self.add_item((block_xml['@name'],block_xml['@concentration']))
+            pattern = SpeciesPattern(block_xml)
+            self.add_item((pattern,block_xml['@concentration']))
 
+    def add_item(self, item_tpl):
+        name, val = item_tpl
+        self._item_dict[name] = val
 
 class MoleculeTypes(ModelBlock):
     '''
