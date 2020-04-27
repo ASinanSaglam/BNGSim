@@ -139,7 +139,9 @@ class Species(ModelBlock):
         #TODO: Eventually regenerate patterns 
         # with bond handling from XML instead of 
         # reading the name directly to stay consistent
-        # TODO: Compartments
+        #TODO This is especially important since XML dumps 
+        # compartments with format @X::Species and that 
+        # seems uncommon currently
         if isinstance(block_xml, list):
             for sd in block_xml:
                 self.add_item((sd['@name'],sd['@concentration']))
