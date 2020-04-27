@@ -142,6 +142,12 @@ class Species(ModelBlock):
             if key == ikey.string:
                 self._item_dict[ikey] = value
 
+    def __contains__(self, key):
+        for ikey in self._item_dict:
+            if key == ikey.string:
+                return True
+        return False
+
     def parse_block(self, block):
         # strip comments 
         species = list(map(self.strip_comment, block))
@@ -193,6 +199,12 @@ class MoleculeTypes(ModelBlock):
         for ikey in self._item_dict:
             if key == ikey.string:
                 self._item_dict[ikey] = value
+
+    def __contains__(self, key):
+        for ikey in self._item_dict:
+            if key == ikey.string:
+                return True
+        return False
 
     def __str__(self):
         # overwrites what the method returns when 
