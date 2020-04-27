@@ -30,6 +30,9 @@ class ModelBlock:
     def __iter__(self):
         return self._item_dict.keys().__iter__()
 
+    def __contains__(self, key):
+        return key in self._item_dict
+
     def add_item(self, item_tpl):
         # TODO: try adding evaluation of the parameter here
         # for the future, in case we want people to be able
@@ -173,9 +176,23 @@ class MoleculeTypes(ModelBlock):
         super().__init__()
         self.name = "molecule types"
 
+    def __repr__(self):
+        return str(list(self._item_dict.keys()))
+
     def add_item(self, item_tpl):
         name, = item_tpl
         self._item_dict[name] = ""
+
+    def __getitem__(self, key):
+        # our keys are pattern objects
+        for ikey in self._item_dict:
+            if key == ikey.string:
+                return self._item_dict[ikey]
+
+    def __setitem__(self, key, value):
+        for ikey in self._item_dict:
+            if key == ikey.string:
+                self._item_dict[ikey] = value
 
     def __str__(self):
         # overwrites what the method returns when 
@@ -201,6 +218,7 @@ class MoleculeTypes(ModelBlock):
         else:
             pattern = MolTypePattern(block_xml)
             self.add_item((pattern,))
+
 
 class Observables(ModelBlock):
     # TODO: Compartments
