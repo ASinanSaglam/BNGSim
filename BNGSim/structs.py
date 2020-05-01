@@ -193,7 +193,7 @@ class MoleculeTypes(ModelBlock):
         # our keys are pattern objects
         for ikey in self._item_dict:
             if key == ikey.string:
-                return self._item_dict[ikey]
+                return ikey
 
     def __setitem__(self, key, value):
         for ikey in self._item_dict:

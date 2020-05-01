@@ -23,7 +23,9 @@ class Pattern:
             name = mol_xml['@name'] 
             # we have a single molecule, count 1, order 0
             self.molecules[name] = {'count': 1, 'order': [0]}
+            # TODO: List of lists
             self.molecules[name]['components'] = []
+            # TODO: Store @X: 
             self.molecules[name]['compartment'] = []
             # start building the string
             mol_str = mol_xml["@name"] + "("
@@ -229,8 +231,6 @@ class RulePattern(Pattern):
             rate_cts += ")"
         else:
             print("don't recognize rate law type")
-            import IPython
-            IPython.embed()
         return rate_cts
 
     def resolve_rxn_side(self, side_xml):
