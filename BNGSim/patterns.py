@@ -148,9 +148,19 @@ class SpeciesPattern(Pattern):
 
     def resolve_xml(self, spec_xml):
         pattern = spec_xml['ListOfMolecules']['Molecule']
-        # this shouldn't be a list
+        # bonds stored in spec_xml
+        if "ListOfBonds" in spec_xml:
+            self.bonds.set_xml(spec_xml["ListOfBonds"]["Bond"])
+        # list of a singular species?
         if isinstance(pattern, list):
-            print("species pattern shouldn't be a list")
+            spec_str = ""
+            for ipat, pat in enumerate(pattern): 
+                if ipat > 0:
+                    spec_str += "."
+                if '@compartment' in pat:
+                    spec_str += "@{}:".format(pat['@compartment'])
+                spec_res = self.mol_to_str(pat)
+                spec_str += spec_res
         else:
             spec_str = self.mol_to_str(pattern)
         return spec_str
