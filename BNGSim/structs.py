@@ -132,10 +132,12 @@ class Species(ModelBlock):
         return "\n".join(block_lines)
 
     def __getitem__(self, key):
-        # our keys are pattern objects
-        for ikey in self._item_dict:
-            if key == ikey.string:
-                return self._item_dict[ikey]
+        if isinstance(key, str):
+            # our keys are pattern objects
+            for ikey in self._item_dict:
+                if key == ikey.string:
+                    return self._item_dict[ikey]
+        return self._item_dict[key]
 
     def __setitem__(self, key, value):
         for ikey in self._item_dict:
@@ -190,10 +192,12 @@ class MoleculeTypes(ModelBlock):
         self._item_dict[name] = ""
 
     def __getitem__(self, key):
-        # our keys are pattern objects
-        for ikey in self._item_dict:
-            if key == ikey.string:
-                return ikey
+        if isinstance(key, str):
+            # our keys are pattern objects
+            for ikey in self._item_dict:
+                if key == ikey.string:
+                    return self._item_dict[ikey]
+        return self._item_dict[key]
 
     def __setitem__(self, key, value):
         for ikey in self._item_dict:
