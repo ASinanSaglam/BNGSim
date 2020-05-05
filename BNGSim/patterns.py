@@ -4,6 +4,7 @@ from BNGSim.bonds import Bonds
 class Pattern:
     def __init__(self, pattern_xml):
         self.molecules = {}
+        self.molecule_list = []
         self.pattern_xml = pattern_xml
         self.bonds = Bonds()
         self.string = self.resolve_xml(self.pattern_xml)
@@ -28,12 +29,13 @@ class Pattern:
             # TODO: Store @X: 
             self.molecules[name]['compartment'] = []
             # start building the string
-            mol_str = mol_xml["@name"] + "("
+            mol_str = mol_xml["@name"] 
             if "ListOfComponents" in mol_xml:
+                mol_str += "("
                 # Single molecule can't have bonds
                 comp_str = self.comp_to_str(mol_xml["ListOfComponents"]["Component"], mname=mol_xml['@name'])
                 mol_str += comp_str
-            mol_str += ")"
+                mol_str += ")"
             if '@compartment' in mol_xml:
                 self.molecules[mol_xml['@name']]['compartment'].append(mol_xml['@compartment'])
                 mol_str += "@{}".format(mol_xml['@compartment'])
@@ -55,11 +57,12 @@ class Pattern:
                 if imol > 0:
                     # complexing
                     mol_str += "."
-                mol_str += mol["@name"] + "("
+                mol_str += mol["@name"] 
                 if "ListOfComponents" in mol:
+                    mol_str += "("
                     comp_str = self.comp_to_str(mol['ListOfComponents']['Component'], mname=mol['@name'])
                     mol_str += comp_str
-                mol_str += ")"
+                    mol_str += ")"
                 if '@compartment' in mol:
                     self.molecules[mol['@name']]['compartment'].append(mol['@compartment'])
                     mol_str += "@{}".format(mol['@compartment'])
@@ -131,6 +134,7 @@ class ObsPattern(Pattern):
                     obs_str += "@{}:".format(pattern['@compartment'])
                 mol = pattern['ListOfMolecules']['Molecule']
                 obs_res = self.mol_to_str(mol)
+                self.molecule_list.append(obs_res)
                 obs_str += obs_res
         else:
             if "ListOfBonds" in patterns:
@@ -140,6 +144,7 @@ class ObsPattern(Pattern):
             if '@compartment' in patterns:
                 obs_str += "@{}:".format(patterns['@compartment'])
             obs_str += self.mol_to_str(mol)
+            self.molecule_list.append(obs_str)
         return obs_str
 
 class SpeciesPattern(Pattern):
@@ -170,8 +175,9 @@ class MolTypePattern(Pattern):
         super().__init__(pattern_xml)
 
     def resolve_xml(self, molt_xml):
-        molt_str = molt_xml['@id'] + "("
+        molt_str = molt_xml['@id'] 
         if 'ListOfComponentTypes' in molt_xml:
+            molt_str += "("
             comp_dict = molt_xml['ListOfComponentTypes']['ComponentType']
             if '@id' in comp_dict:
                 molt_str += comp_dict['@id']
@@ -197,7 +203,7 @@ class MolTypePattern(Pattern):
                                 molt_str += "~{}".format(state['@id'])
                         else:
                             molt_str += "~{}".format(al_states['@id'])
-        molt_str += ")"
+            molt_str += ")"
         return molt_str
 
 class RulePattern(Pattern):

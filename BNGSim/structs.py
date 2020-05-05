@@ -89,7 +89,7 @@ class Parameters(ModelBlock):
         # it's converted to string
         block_lines = ["\nbegin {}".format(self.name)]
         for item in self._item_dict.keys():
-            block_lines.append("  " + "{} {}".format(item, self._item_dict[item]))
+            block_lines.append("  " + "{} {}".format(item, self._item_dict[item][0]))
         block_lines.append("end {}\n".format(self.name))
         return "\n".join(block_lines)
 
@@ -104,14 +104,27 @@ class Parameters(ModelBlock):
         params = list(map(lambda x: [x[0], str(functools.reduce(lambda x,y: x+y, x[1:]))], params))
         # now generate the param object
         self.add_items(params)
+        
+    def add_item(self, item_tpl):
+        name, value, expr = item_tpl
+        try:
+            pval = float(expr)
+        except:
+            pval = expr
+        self._item_dict[name] = pval 
+        try:
+            setattr(self, name, pval)
+        except:
+            print("can't set {} to {}".format(name, pval))
+            pass
 
     def parse_xml_block(self, block_xml):
         # 
         if isinstance(block_xml, list):
             for b in block_xml:
-                self.add_item((b['@id'],b['@value']))
+                self.add_item((b['@id'],b['@value'],b['@expr']))
         else:
-            self.add_item((block_xml['@id'], block_xml['@value']))
+            self.add_item((block_xml['@id'], block_xml['@value'], block_xml['@expr']))
         # 
 
 class Species(ModelBlock):
