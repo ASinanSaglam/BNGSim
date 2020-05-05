@@ -89,7 +89,7 @@ class Parameters(ModelBlock):
         # it's converted to string
         block_lines = ["\nbegin {}".format(self.name)]
         for item in self._item_dict.keys():
-            block_lines.append("  " + "{} {}".format(item, self._item_dict[item][0]))
+            block_lines.append("  " + "{} {}".format(item, self._item_dict[item]))
         block_lines.append("end {}\n".format(self.name))
         return "\n".join(block_lines)
 
