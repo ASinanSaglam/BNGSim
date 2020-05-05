@@ -66,6 +66,7 @@ class Parameters(ModelBlock):
     Class containing parameters
     '''
     def __init__(self):
+        self.expressions = {}
         super().__init__()
         self.name = "parameters"
 
@@ -89,7 +90,10 @@ class Parameters(ModelBlock):
         # it's converted to string
         block_lines = ["\nbegin {}".format(self.name)]
         for item in self._item_dict.keys():
-            block_lines.append("  " + "{} {}".format(item, self._item_dict[item]))
+            if item in self.expressions:
+                block_lines.append("  " + "{} {}".format(item, self.expressions[item]))
+            else:
+                block_lines.append("  " + "{} {}".format(item, self._item_dict[item]))
         block_lines.append("end {}\n".format(self.name))
         return "\n".join(block_lines)
 
@@ -106,19 +110,12 @@ class Parameters(ModelBlock):
         self.add_items(params)
         
     def add_item(self, item_tpl):
-        name, value, expr = item_tpl
-        if expr is not None:
-            try:
-                pval = float(expr)
-            except:
-                pval = expr
-        else:
-            pval = value
-        self._item_dict[name] = pval 
+        name, value = item_tpl
+        self._item_dict[name] = value
         try:
-            setattr(self, name, pval)
+            setattr(self, name, value)
         except:
-            print("can't set {} to {}".format(name, pval))
+            print("can't set {} to {}".format(name, value))
             pass
 
     def parse_xml_block(self, block_xml):
@@ -126,14 +123,12 @@ class Parameters(ModelBlock):
         if isinstance(block_xml, list):
             for b in block_xml:
                 if '@expr' in b:
-                    self.add_item((b['@id'],b['@value'],b['@expr']))
-                else:
-                    self.add_item((b['@id'],b['@value'],None))
+                    self.expressions[b['@id']] = b['@expr']
+                self.add_item((b['@id'],b['@value']))
         else:
             if '@expr' in block_xml:
-                self.add_item((block_xml['@id'], block_xml['@value'], block_xml['@expr']))
-            else:
-                self.add_item((block_xml['@id'], block_xml['@value'], None))
+                self.expressions[block_xml['@id']] = block_xml['@expr']
+            self.add_item((block_xml['@id'], block_xml['@value']))
         # 
 
 class Species(ModelBlock):
