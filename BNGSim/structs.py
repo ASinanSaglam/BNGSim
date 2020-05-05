@@ -107,10 +107,13 @@ class Parameters(ModelBlock):
         
     def add_item(self, item_tpl):
         name, value, expr = item_tpl
-        try:
-            pval = float(expr)
-        except:
-            pval = expr
+        if expr is not None:
+            try:
+                pval = float(expr)
+            except:
+                pval = expr
+        else:
+            pval = value
         self._item_dict[name] = pval 
         try:
             setattr(self, name, pval)
