@@ -122,9 +122,15 @@ class Parameters(ModelBlock):
         # 
         if isinstance(block_xml, list):
             for b in block_xml:
-                self.add_item((b['@id'],b['@value'],b['@expr']))
+                if '@expr' in b:
+                    self.add_item((b['@id'],b['@value'],b['@expr']))
+                else:
+                    self.add_item((b['@id'],b['@value'],None))
         else:
-            self.add_item((block_xml['@id'], block_xml['@value'], block_xml['@expr']))
+            if '@expr' in block_xml:
+                self.add_item((block_xml['@id'], block_xml['@value'], block_xml['@expr']))
+            else:
+                self.add_item((block_xml['@id'], block_xml['@value'], None))
         # 
 
 class Species(ModelBlock):
