@@ -298,6 +298,12 @@ class Observables(ModelBlock):
         block_lines.append("end {}\n".format(self.name))
         return "\n".join(block_lines)
 
+    def __getitem__(self, key):
+        if isinstance(key, int):
+            # get the item in order
+            return self._item_dict[list(self._item_dict.keys())[key]][1]
+        return self._item_dict[key]
+
     def parse_block(self, block):
         # strip comments 
         obs = list(map(self.strip_comment, block))
