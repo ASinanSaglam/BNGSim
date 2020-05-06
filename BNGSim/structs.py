@@ -461,8 +461,8 @@ class Rules(ModelBlock):
                 # ensure we have the original
                 if reverse_of in self._item_dict:
                     # make bidirectional and add rate law
-                    r1 = self._item_dict[reverse_of].rate_law
-                    r2 = rxn_pat.rate_law
+                    r1 = self._item_dict[reverse_of].rate_law[0]
+                    r2 = rxn_pat.rate_law[0]
                     self._item_dict[reverse_of].set_rate_law((r1,r2))
                     # mark reverse for deletion
                     delete_list.append(item_key)

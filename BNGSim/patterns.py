@@ -217,21 +217,21 @@ class RulePattern(Pattern):
 
     def __repr__(self):
         if self.bidirectional:
-            return "{}: {} <-> {} {}".format(self.name, self.lhs, self.rhs, self.rate_law)
+            return "{}: {} <-> {} {},{}".format(self.name, self.lhs, self.rhs, self.rate_law[0], self.rate_law[1])
         else:
-            return "{}: {} -> {} {}".format(self.name, self.lhs, self.rhs, self.rate_law)
+            return "{}: {} -> {} {}".format(self.name, self.lhs, self.rhs, self.rate_law[0])
 
     def __str__(self):
         if self.bidirectional:
-            return "{}: {} <-> {} {}".format(self.name, self.lhs, self.rhs, self.rate_law)
+            return "{}: {} <-> {} {},{}".format(self.name, self.lhs, self.rhs, self.rate_law[0], self.rate_law[1])
         else:
-            return "{}: {} -> {} {}".format(self.name, self.lhs, self.rhs, self.rate_law)
+            return "{}: {} -> {} {}".format(self.name, self.lhs, self.rhs, self.rate_law[0])
 
     def set_rate_law(self, rate_law):
         if len(rate_law) == 1:
-            self.rate_law = rate_law[0]
+            self.rate_law = [rate_law[0]]
         elif len(rate_law) == 2: 
-            self.rate_law = "{}, {}".format(rate_law[0], rate_law[1])
+            self.rate_law = [rate_law[0], rate_law[1]]
             self.bidirectional = True
         else:
             print("1 or 2 rate constants allowed")
@@ -247,7 +247,7 @@ class RulePattern(Pattern):
         self.rhs, self.rhs_list = self.resolve_rxn_side(pattern_xml['ListOfProductPatterns'])
         if 'RateLaw' not in pattern_xml:
             print("Rule seems to be missing a rate law, please make sure that XML exporter of BNGL supports whatever you are doing!")
-        self.rate_law = self.resolve_ratelaw(pattern_xml['RateLaw'])
+        self.rate_law = [self.resolve_ratelaw(pattern_xml['RateLaw'])]
 
     def resolve_ratelaw(self, rate_xml):
         rate_type = rate_xml['@type']
