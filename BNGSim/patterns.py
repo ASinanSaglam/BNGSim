@@ -3,7 +3,7 @@ from BNGSim.bonds import Bonds
 ###### PATTERNS ###### 
 class Pattern:
     def __init__(self, pattern_xml):
-        self.molecules = {}
+        self.molecules = []
         self.molecule_list = []
         self.pattern_xml = pattern_xml
         self.bonds = Bonds()
@@ -22,23 +22,20 @@ class Pattern:
             # and compartments in a separate dictionary 
             # for use later
             name = mol_xml['@name'] 
-            # we have a single molecule, count 1, order 0
-            self.molecules[name] = {'count': 1, 'order': [0]}
-            # TODO: List of lists
-            self.molecules[name]['components'] = []
-            # TODO: Store @X: 
-            self.molecules[name]['compartment'] = []
+            # molecule dictionary
+            mol_dict = {"name": name, "components": [], "compartment": None} 
             # start building the string
             mol_str = mol_xml["@name"] 
             if "ListOfComponents" in mol_xml:
                 mol_str += "("
                 # Single molecule can't have bonds
-                comp_str = self.comp_to_str(mol_xml["ListOfComponents"]["Component"], mname=mol_xml['@name'])
+                comp_str = self.comp_to_str(mol_xml["ListOfComponents"]["Component"], mol_dict=mol_dict)
                 mol_str += comp_str
                 mol_str += ")"
             if '@compartment' in mol_xml:
-                self.molecules[mol_xml['@name']]['compartment'].append(mol_xml['@compartment'])
+                mol_dict['compartment'] = mol_xml['@compartment']
                 mol_str += "@{}".format(mol_xml['@compartment'])
+            self.molecules.append(mol_dict)
         else:
             # this means we have multiple molecules bonding
             mol_str = ""
@@ -47,28 +44,23 @@ class Pattern:
                 # we can have multiple copies with different 
                 # component states bound together. we need to
                 # somehow account for it
-                if name not in self.molecules:
-                    self.molecules[name] = {'count': 1, 'order': [imol]}
-                    self.molecules[mol['@name']]['components'] = []
-                    self.molecules[mol['@name']]['compartment'] = []
-                else:
-                    self.molecules[name]['count'] += 1
-                    self.molecules[name]['order'].append(imol)
+                mol_dict = {"name": name, "components": [], "compartment": None}
                 if imol > 0:
                     # complexing
                     mol_str += "."
                 mol_str += mol["@name"] 
                 if "ListOfComponents" in mol:
                     mol_str += "("
-                    comp_str = self.comp_to_str(mol['ListOfComponents']['Component'], mname=mol['@name'])
+                    comp_str = self.comp_to_str(mol['ListOfComponents']['Component'], mol_dict=mol_dict)
                     mol_str += comp_str
                     mol_str += ")"
                 if '@compartment' in mol:
-                    self.molecules[mol['@name']]['compartment'].append(mol['@compartment'])
+                    mol_dict['compartment'] = mol['@compartment']
                     mol_str += "@{}".format(mol['@compartment'])
+                self.molecules.append(mol_dict)
         return mol_str
 
-    def comp_to_str(self, comp_xml, mname=None):
+    def comp_to_str(self, comp_xml, mol_dict=None):
         # bonds = compartment id, bond id 
         # comp xml can be a list or a dict
         if isinstance(comp_xml, list):
@@ -92,8 +84,8 @@ class Pattern:
                     for bi in bond_id:
                         comp_dict['bonds'].append(bi)
                         comp_str += "!{}".format(bi)
-                if mname is not None:
-                    self.molecules[mname]['components'].append(comp_dict)
+                if mol_dict is not None:
+                    mol_dict['components'].append(comp_dict)
         else:
             # single comp, this is a dict
             comp_dict = {}
@@ -111,8 +103,8 @@ class Pattern:
                 for bi in bond_id:
                     comp_dict['bonds'].append(bi)
                     comp_str += "!{}".format(bi)
-            if mname is not None:
-                self.molecules[mname]['components'].append(comp_dict)
+            if mol_dict is not None:
+                mol_dict['components'].append(comp_dict)
         return comp_str
 
 class ObsPattern(Pattern):

@@ -16,6 +16,9 @@ class ModelBlock:
         return str(self._item_dict)
 
     def __getitem__(self, key):
+        if isinstance(key, int):
+            # get the item in order
+            return list(self._item_dict.keys())[key]
         return self._item_dict[key]
 
     def __setitem__(self, key, value):
@@ -154,6 +157,9 @@ class Species(ModelBlock):
             for ikey in self._item_dict:
                 if key == ikey.string:
                     return self._item_dict[ikey]
+        if isinstance(key, int):
+            # get the item in order
+            return list(self._item_dict.keys())[key]
         return self._item_dict[key]
 
     def __setitem__(self, key, value):
@@ -214,6 +220,9 @@ class MoleculeTypes(ModelBlock):
             for ikey in self._item_dict:
                 if key == ikey.string:
                     return self._item_dict[ikey]
+        if isinstance(key, int):
+            # get the item in order
+            return list(self._item_dict.keys())[key]
         return self._item_dict[key]
 
     def __setitem__(self, key, value):
