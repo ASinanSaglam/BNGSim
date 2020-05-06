@@ -212,23 +212,42 @@ class MolTypePattern(Pattern):
 
 class RulePattern(Pattern):
     def __init__(self, pattern_xml):
+        self.bidirectional = False
         super().__init__(pattern_xml)
 
+    def __repr__(self):
+        if self.bidirectional:
+            return "{}: {} <-> {} {}".format(self.name, self.lhs, self.rhs, self.rate_law)
+        else:
+            return "{}: {} -> {} {}".format(self.name, self.lhs, self.rhs, self.rate_law)
+
+    def __str__(self):
+        if self.bidirectional:
+            return "{}: {} <-> {} {}".format(self.name, self.lhs, self.rhs, self.rate_law)
+        else:
+            return "{}: {} -> {} {}".format(self.name, self.lhs, self.rhs, self.rate_law)
+
+    def set_rate_law(self, rate_law):
+        if len(rate_law) == 1:
+            self.rate_law = rate_law[0]
+        elif len(rate_law) == 2: 
+            self.rate_law = "{}, {}".format(rate_law[0], rate_law[1])
+            self.bidirectional = True
+        else:
+            print("1 or 2 rate constants allowed")
+    
     def resolve_xml(self, pattern_xml):
         '''
         in this particular case also sets the self.item_tuple
         '''
         # 
         rule_name = pattern_xml['@name']
-        lhs = self.resolve_rxn_side(pattern_xml['ListOfReactantPatterns'])
-        rhs = self.resolve_rxn_side(pattern_xml['ListOfProductPatterns'])
+        self.name = rule_name
+        self.lhs, self.lhs_list = self.resolve_rxn_side(pattern_xml['ListOfReactantPatterns'])
+        self.rhs, self.rhs_list = self.resolve_rxn_side(pattern_xml['ListOfProductPatterns'])
         if 'RateLaw' not in pattern_xml:
             print("Rule seems to be missing a rate law, please make sure that XML exporter of BNGL supports whatever you are doing!")
-        rate_law = self.resolve_ratelaw(pattern_xml['RateLaw'])
-        # We need to set self.item_tuple to 
-        # (rule_name, LHS, RHS, rate_law)
-        self.item_tuple = [rule_name, lhs, "->", rhs, rate_law]
-        return "{}: {} -> {} {}".format(rule_name, lhs, rhs, rate_law)
+        self.rate_law = self.resolve_ratelaw(pattern_xml['RateLaw'])
 
     def resolve_ratelaw(self, rate_xml):
         rate_type = rate_xml['@type']
@@ -256,11 +275,13 @@ class RulePattern(Pattern):
     def resolve_rxn_side(self, side_xml):
         # this is either reactant or product
         if side_xml is None:
-            return "0"
+            return "0", [[None]]
         elif 'ReactantPattern' in side_xml:
             # this is a lhs/reactant side
             side_list = side_xml['ReactantPattern']
             if isinstance(side_list, list):
+                # side list to save
+                sl = []
                 # this is a list of reactants
                 if '@compartment' in side_list:
                     react_str = "@{}:".format(side_list['@compartment'])
@@ -273,8 +294,10 @@ class RulePattern(Pattern):
                         react_str += " + "
                     # bonds should go here
                     react_res = self.mol_to_str(react['ListOfMolecules']['Molecule'])
+                    sl.append(react_res)
                     react_str += react_res
             else: 
+                sl = []
                 if '@compartment' in side_list:
                     react_str = "@{}:".format(side_list['@compartment'])
                 else:
@@ -282,11 +305,13 @@ class RulePattern(Pattern):
                 if "ListOfBonds" in side_list:
                     self.bonds.set_xml(side_list["ListOfBonds"]['Bond'])
                 react_res = self.mol_to_str(side_list['ListOfMolecules']['Molecule'])
+                sl.append(react_res)
                 react_str += react_res
-            return react_str
+            return react_str, sl
         elif "ProductPattern" in side_xml:
             side_list = side_xml['ProductPattern']
             if isinstance(side_list, list):
+                sl = []
                 # this is a list of reactants
                 if '@compartment' in side_list:
                     prod_str = "@{}:".format(side_list['@compartment'])
@@ -298,8 +323,10 @@ class RulePattern(Pattern):
                     if iprod > 0:
                         prod_str += " + "
                     prod_res = self.mol_to_str(prod['ListOfMolecules']['Molecule'])
+                    sl.append(prod_res)
                     prod_str += prod_res
             else: 
+                sl = []
                 if '@compartment' in side_list:
                     prod_str = "@{}:".format(side_list['@compartment'])
                 else:
@@ -307,8 +334,9 @@ class RulePattern(Pattern):
                 if "ListOfBonds" in side_list:
                     self.bonds.set_xml(side_list["ListOfBonds"]['Bond'])
                 prod_res = self.mol_to_str(side_list['ListOfMolecules']['Molecule'])
+                sl.append(prod_res)
                 prod_str += prod_res
-            return prod_str
+            return prod_str, sl
         else: 
             print("Can't parse rule XML {}".format(side_xml))
 

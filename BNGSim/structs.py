@@ -415,35 +415,11 @@ class Rules(ModelBlock):
         super().__init__()
         self.name = "reaction rules"
 
-    def add_item(self, item_tpl):
-        '''
-        A reaction rule, requires a 5-tuple
-        (rule_name, LHS, rxn_type, RHS, rate_law)
-        '''
-        rule_name, lhs, rxn_type, rhs, rate_law = item_tpl
-        self._item_dict[rule_name] = [lhs, rxn_type, rhs, rate_law]
-
     def __str__(self):
         # TODO: printing also needs a lot of adjusting
         block_lines = ["\nbegin {}".format(self.name)]
         for item in self._item_dict.keys():
-            rule_tpl = self._item_dict[item]
-            rule_str = ""
-            if item != "":
-                rule_str += "  {}: ".format(item)
-            # LHS
-            rule_str += rule_tpl[0]
-            # Rxn type
-            rule_str += " {} ".format(rule_tpl[1])
-            # RHS
-            rule_str += rule_tpl[2] 
-            # Rate law, adjusted according to type
-            rxn_type = rule_tpl[1]
-            if rxn_type == "->":
-                rule_str += " {}".format(rule_tpl[3])
-            elif rxn_type =="<->":
-                rule_str += " {},{}".format(rule_tpl[3][0], rule_tpl[3][1])
-            block_lines.append(rule_str)
+            block_lines.append(str(self._item_dict[item]))
         block_lines.append("end {}\n".format(self.name))
         return "\n".join(block_lines)
 
@@ -463,10 +439,10 @@ class Rules(ModelBlock):
         if isinstance(block_xml, list):
             for rd in block_xml:
                 rpattern = RulePattern(rd)
-                self.add_item(rpattern.item_tuple)
+                self.add_item((rpattern.name, rpattern))
         else:
             rpattern = RulePattern(block_xml)
-            self.add_item(rpattern.item_tuple)
+            self.add_item((rpattern.name, rpattern))
         self.consolidate_rules()
 
     def consolidate_rules(self):
@@ -478,18 +454,16 @@ class Rules(ModelBlock):
         '''
         delete_list = []
         for item_key in self._item_dict:
-            rxn_list = self._item_dict[item_key]
+            rxn_pat = self._item_dict[item_key]
             if item_key.startswith("_reverse_"):
                 # this is the reverse of another reaction
                 reverse_of = item_key.replace("_reverse_", "")
                 # ensure we have the original
                 if reverse_of in self._item_dict:
-                    # make bidirectional
-                    self._item_dict[reverse_of][1] = "<->"
-                    # add rate law
-                    r1 = self._item_dict[reverse_of][3] 
-                    r2 = rxn_list[3]
-                    self._item_dict[reverse_of][3] = (r1,r2)
+                    # make bidirectional and add rate law
+                    r1 = self._item_dict[reverse_of].rate_law
+                    r2 = rxn_pat.rate_law
+                    self._item_dict[reverse_of].set_rate_law((r1,r2))
                     # mark reverse for deletion
                     delete_list.append(item_key)
         # delete items marked for deletion
