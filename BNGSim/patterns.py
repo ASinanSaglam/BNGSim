@@ -168,34 +168,46 @@ class MolTypePattern(Pattern):
 
     def resolve_xml(self, molt_xml):
         molt_str = molt_xml['@id'] 
+        mol_dict = {"name": molt_str, "components": [], "compartment": None}
         if 'ListOfComponentTypes' in molt_xml:
             molt_str += "("
             comp_dict = molt_xml['ListOfComponentTypes']['ComponentType']
             if '@id' in comp_dict:
                 molt_str += comp_dict['@id']
+                cd = {"name": comp_dict["@id"]}
                 if "ListOfAllowedStates" in comp_dict:
                     # we have states
                     al_states = comp_dict['ListOfAllowedStates']['AllowedState']
+                    cd["states"] = []
                     if isinstance(al_states, list):
                         for istate, state in enumerate(al_states):
                             molt_str += "~{}".format(state['@id'])
+                            cd["states"].append(state["@id"])
                     else:
                         molt_str += "~{}".format(al_states['@id'])
+                        cd["states"].append(state["@id"])
+                mol_dict["components"].append(cd)
             else:
                 # multiple components
                 for icomp, comp in enumerate(comp_dict):
                     if icomp > 0:
                         molt_str += ","
                     molt_str += comp['@id']
+                    cd = {"name": comp['@id']}
                     if "ListOfAllowedStates" in comp:
                         # we have states
                         al_states = comp['ListOfAllowedStates']['AllowedState']
+                        cd['states'] = []
                         if isinstance(al_states, list):
                             for istate, state in enumerate(al_states):
                                 molt_str += "~{}".format(state['@id'])
+                                cd['states'].append(state['@id'])
                         else:
                             molt_str += "~{}".format(al_states['@id'])
+                            cd['states'].append(state['@id'])
+                    mol_dict['components'].append(cd)
             molt_str += ")"
+        self.molecules.append(mol_dict)
         return molt_str
 
 class RulePattern(Pattern):
