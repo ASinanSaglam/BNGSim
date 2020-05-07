@@ -73,7 +73,7 @@ class BNGModel:
         # run with --xml 
         os.chdir(temp_folder)
         # TODO: Make output supression an option somewhere
-        rc = subprocess.run([self.bngexec, "--xml", stripped_bngl])
+        rc = subprocess.run(["perl",self.bngexec, "--xml", stripped_bngl])
         if rc.returncode == 1:
             print("XML generation failed, trying the fallback parser")
             # go back to our original location

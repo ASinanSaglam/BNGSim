@@ -2,6 +2,10 @@ import os, subprocess
 from distutils import spawn
 
 def find_BNG_path(BNGPATH=None):
+    # TODO: Figure out how to use the BNG2.pl if it's set 
+    # in the PATH variable. Solution: set os.environ BNGPATH
+    # and make everything use that route 
+
     # Let's keep up the idea we pull this path from the environment
     if BNGPATH is None:
         try:
@@ -25,7 +29,7 @@ def find_BNG_path(BNGPATH=None):
     return BNGPATH, bngexec
 
 def test_bngexec(bngexec):
-    rc = subprocess.run(["perl",bngexec])
+    rc = subprocess.run([bngexec])
     if rc.returncode == 0:
         return True
     else:
