@@ -17,7 +17,7 @@ def find_BNG_path(BNGPATH=None):
             BNGPATH = spawn.find_executable("BNG2.pl")
             BNGPATH, _ = os.path.split(BNGPATH)
     else:
-        bngexec = BNGPATH + "/BNG2.pl"
+        bngexec = os.path.join(BNGPATH, "BNG2.pl")
         if test_bngexec(bngexec):
             print("BNG2.pl seems to be working")
         else:
@@ -25,7 +25,7 @@ def find_BNG_path(BNGPATH=None):
     return BNGPATH, bngexec
 
 def test_bngexec(bngexec):
-    rc = subprocess.run([bngexec], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    rc = subprocess.run(["perl",bngexec])
     if rc.returncode == 0:
         return True
     else:
