@@ -13,6 +13,8 @@ class ModelBlock:
         # overwrites what the class representation
         # shows the items in the model block in 
         # say ipython
+        if hasattr(self, "expressions"):
+            return str(self.expressions)
         return str(self._item_dict)
 
     def __getitem__(self, key):
@@ -67,6 +69,7 @@ class Parameters(ModelBlock):
     '''
     def __init__(self):
         self.expressions = {}
+        self.values = {}
         super().__init__()
         self.name = "parameters"
 
@@ -113,13 +116,19 @@ class Parameters(ModelBlock):
         # 
         if isinstance(block_xml, list):
             for b in block_xml:
+                self.values[b['@id']] = b['@value']
                 if '@expr' in b:
                     self.expressions[b['@id']] = b['@expr']
-                self.add_item((b['@id'],b['@value']))
+                    self.add_item((b['@id'],b['@expr']))
+                else:
+                    self.add_item((b['@id'],b['@value']))
         else:
+            self.values[block_xml['@id']] = block_xml['@value']
             if '@expr' in block_xml:
                 self.expressions[block_xml['@id']] = block_xml['@expr']
-            self.add_item((block_xml['@id'], block_xml['@value']))
+                self.add_item((block_xml['@id'], block_xml['@expr']))
+            else:
+                self.add_item((block_xml['@id'], block_xml['@value']))
         # 
 
 class Species(ModelBlock):
