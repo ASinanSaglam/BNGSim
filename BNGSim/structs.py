@@ -59,9 +59,6 @@ class ModelBlock:
     def strip_comment(self, line):
         return line[0:line.find("#")]
 
-    def parse_block(self, block):
-        raise NotImplemented
-
 
 # TODO: Add a LOT of error handling
 class Parameters(ModelBlock):
@@ -103,18 +100,6 @@ class Parameters(ModelBlock):
         block_lines.append("end {}\n".format(self.name))
         return "\n".join(block_lines)
 
-    def parse_block(self, block):
-        # strip comments
-        params = list(map(self.strip_comment, block))
-        # split properly
-        params = list(map(lambda x: x.split(), params))
-        # ensure we have at least 2 elements
-        params = list(filter(lambda x: len(x)>1, params))
-        # list should be param_name = expression
-        params = list(map(lambda x: [x[0], str(functools.reduce(lambda x,y: x+y, x[1:]))], params))
-        # now generate the param object
-        self.add_items(params)
-        
     def add_item(self, item_tpl):
         name, value = item_tpl
         self._item_dict[name] = value
@@ -175,13 +160,6 @@ class Species(ModelBlock):
             if key == ikey.string:
                 return True
         return False
-
-    def parse_block(self, block):
-        # strip comments 
-        species = list(map(self.strip_comment, block))
-        # basically the same as parameters 
-        species = list(map(lambda x: x.split(), species))
-        self.add_items(species)
 
     def parse_xml_block(self, block_xml):
         #TODO: Eventually regenerate patterns 
@@ -248,13 +226,6 @@ class MoleculeTypes(ModelBlock):
         block_lines.append("end {}\n".format(self.name))
         return "\n".join(block_lines)
 
-    def parse_block(self, block):
-        # strip comments 
-        moltypes = list(map(self.strip_comment, block))
-        # remove white spaces 
-        moltypes = list(map(lambda x: x.split(), moltypes))
-        self.add_items(moltypes)
-
     def parse_xml_block(self, block_xml):
         if isinstance(block_xml, list):
             for md in block_xml:
@@ -307,13 +278,6 @@ class Observables(ModelBlock):
             return self._item_dict[list(self._item_dict.keys())[key]][1]
         return self._item_dict[key]
 
-    def parse_block(self, block):
-        # strip comments 
-        obs = list(map(self.strip_comment, block))
-        # remove white spaces and split
-        obs = list(map(lambda x: x.split(), obs))
-        self.add_items(obs)
-
     def parse_xml_block(self, block_xml):
         #
         if isinstance(block_xml, list):
@@ -344,13 +308,6 @@ class Functions(ModelBlock):
                     "{} = {}".format(item, self._item_dict[item]))
         block_lines.append("end {}\n".format(self.name))
         return "\n".join(block_lines)
-
-    def parse_block(self, block):
-        # strip comments
-        functions = list(map(self.strip_comment, block))
-        # split by = sign
-        functions = list(map(lambda x: x.split("="), functions))
-        self.functions.add_items(functions)
 
     def parse_xml_block(self, block_xml):
         if isinstance(block_xml, list):
@@ -387,9 +344,6 @@ class Compartments(ModelBlock):
         name, dim, size, outside = item_tpl
         self._item_dict[name] = [dim, size, outside]
 
-    def parse_block(self, block):
-        raise NotImplemented
-
     def parse_xml_block(self, block_xml):
         # 
         if isinstance(block_xml, list):
@@ -425,18 +379,6 @@ class Rules(ModelBlock):
             block_lines.append(str(self._item_dict[item]))
         block_lines.append("end {}\n".format(self.name))
         return "\n".join(block_lines)
-
-    def parse_block(self, block):
-        # TODO: Update this so it parses the rules to at least
-        # some extent. Don't need anything complicated, just need 
-        # a barebones implementation 
-        # # strip comments
-        # rules = list(map(self.strip_comment, block))
-        # # split 
-        # rules = list(map(lambda x: " ".join(x.split(" ")), rules))
-        # # FIXME: This needs a 5-tuple per item, see above
-        # self.add_items(rules)
-        raise NotImplemented
 
     def parse_xml_block(self, block_xml):
         if isinstance(block_xml, list):
