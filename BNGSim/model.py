@@ -7,14 +7,13 @@ class BNGModel:
     '''
     The full model
     '''
-    def __init__(self, bngl_model, BNGPATH=None, BNGLmode=False):
+    def __init__(self, bngl_model, BNGPATH=None):
         self.active_blocks = []
         # We want blocks to be printed in the same order
         # every time
         self._action_list = ["generate_network(", "generate_hybrid_model(","simulate(", "simulate_ode(", "simulate_ssa(", "simulate_pla(", "simulate_nf(", "parameter_scan(", "bifurcate(", "readFile(", "writeFile(", "writeModel(", "writeNetwork(", "writeXML(", "writeSBML(", "writeMfile(", "writeMexfile(", "writeMDL(", "visualize(", "setConcentration(", "addConcentration(", "saveConcentration(", "resetConcentrations(", "setParameter(", "saveParameters(", "resetParameters(", "quit(", "setModelName(", "substanceUnits(", "version(", "setOption("]
         self.block_order = ["parameters", "compartments", "moltypes", 
                             "species", "observables", "functions", "rules"]
-        self.BNGLmode = BNGLmode
         BNGPATH, bngexec = find_BNG_path(BNGPATH)
         self.BNGPATH = BNGPATH
         self.bngexec = bngexec 
