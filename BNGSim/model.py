@@ -40,29 +40,23 @@ class BNGModel:
         return active_ordered_blocks.__iter__()
 
     def parse_model(self, model_file):
-        if self.BNGLmode and model_file.endswith(".bngl"):
-            # forces the old code path that tries to
-            # parse bngl
-            print("Parsing BNGL directly")
-            self.parse_bngl(model_file)
-        else:
-            # this route runs BNG2.pl on the bngl and parses
-            # the XML instead
-            if model_file.endswith(".bngl"):
-                # TODO: Strip actions into a temp file
-                # then run the gen xml 
-                print("Attempting to generate XML")
-                model_file = self.generate_xml(model_file)
-                if model_file is not None:
-                    print("Parsing XML")
-                    self.parse_xml(model_file)
-                else:
-                    self.parse_bngl(model_file)
-            elif model_file.endswith(".xml"):
+        # this route runs BNG2.pl on the bngl and parses
+        # the XML instead
+        if model_file.endswith(".bngl"):
+            # TODO: Strip actions into a temp file
+            # then run the gen xml 
+            print("Attempting to generate XML")
+            model_file = self.generate_xml(model_file)
+            if model_file is not None:
+                print("Parsing XML")
                 self.parse_xml(model_file)
             else:
-                print("The extension of {} is not supported".format(model_file))
-                raise NotImplemented
+                print("XML file doesn't exist")
+        elif model_file.endswith(".xml"):
+            self.parse_xml(model_file)
+        else:
+            print("The extension of {} is not supported".format(model_file))
+            raise NotImplemented
 
     def generate_xml(self, model_file):
         cur_dir = os.getcwd()
@@ -75,7 +69,7 @@ class BNGModel:
         # TODO: Make output supression an option somewhere
         rc = subprocess.run(["perl",self.bngexec, "--xml", stripped_bngl])
         if rc.returncode == 1:
-            print("XML generation failed, trying the fallback parser")
+            print("XML generation failed")
             # go back to our original location
             os.chdir(cur_dir)
             return None
@@ -173,133 +167,6 @@ class BNGModel:
                     self.active_blocks.append("functions")
         # And that's the end of parsing
         print("XML parsed")
-
-    def parse_bngl(self, bngl_file):
-        '''
-        very basic and incomplete direct BNGL parsing
-        TODO: complete a basic parsing of all blocks
-        '''
-        with open(bngl_file, 'r') as bngl:
-            bngl_lines = bngl.readlines()
-
-        blocks = {}
-        blocks["actions"] = []
-        # getting all blocks
-        # TODO: handle all possible commands and options
-        for iline, line in enumerate(bngl_lines):
-            # TODO: Add a if statement that skips empty 
-            # lines and removes it from the block line list
-            if re.match(r'^begin +parameters *(#|$)', line):
-                i_parameter_start = iline
-            elif re.match(r'^end +parameters *(#|$)', line):
-                i_parameter_end = iline
-                blocks['parameters'] = bngl_lines[i_parameter_start+1:i_parameter_end]
-            elif re.match(r'^begin +observables *(#|$)', line):
-                i_obs_start = iline
-            elif re.match(r'^end +observables *(#|$)', line):
-                i_obs_end = iline
-                blocks['observables'] = bngl_lines[i_obs_start+1:i_obs_end]
-            elif re.match(r'^begin +compartments *(#|$)', line):
-                i_compart_start = iline
-            elif re.match(r'^end +compartments *(#|$)', line):
-                i_compart_end = iline
-                blocks['compartments'] = bngl_lines[i_compart_start+1:i_compart_end]
-            elif re.match(r'^begin +molecule types *(#|$)', line):
-                i_moltypes_start = iline
-            elif re.match(r'^end +molecule types *(#|$)', line):
-                i_moltypes_end = iline
-                blocks['moltypes'] = bngl_lines[i_moltypes_start+1:i_moltypes_end]
-            elif re.match(r'^begin +species *(#|$)', line):
-                i_species_start = iline
-            elif re.match(r'^end +species *(#|$)', line):
-                i_species_end = iline
-                blocks['species'] = bngl_lines[i_species_start+1:i_species_end]
-            elif re.match(r'^begin +reaction +rules *(#|$)', line):
-                i_rrules_start = iline
-            elif re.match(r'^end +reaction +rules *(#|$)', line):
-                i_rrules_end = iline
-                blocks["rrules"] = bngl_lines[i_rrules_start+1:i_rrules_end]
-            elif re.match(r'^begin +functions *(#|$)', line):
-                i_rrules_start = iline
-            elif re.match(r'^end +funcions *(#|$)', line):
-                i_rrules_end = iline
-                blocks["functions"] = bngl_lines[i_rrules_start+1:i_rrules_end]
-            # TODO: Add other actions
-            elif re.match(r'^generate_network *', line):
-                blocks["actions"].append(bngl_lines[iline])
-            elif re.match(r'^simulate*', line):
-                blocks["actions"].append(bngl_lines[iline])
-        # parse blocks
-        self.parse_bngl_blocks(blocks)
-        print("BNGL parsed")
-
-    def parse_bngl_blocks(self, blocks):
-        # parameters, observables, compartments, species, 
-        # gen_network, simulate, rrules, functions
-        for key, value in blocks.items():
-            # get appropriate function to parse the block
-            getattr(self, "_parse_"+key)(value)
-
-    def _parse_parameters(self, block):
-        # initialize the block object
-        self.parameters = Parameters()
-        # get the block to string
-        self.parameters.parse_block(block)
-        # active blocks list
-        self.active_blocks.append("parameters")
-
-    def _parse_species(self, block):
-        # init
-        self.species = Species()
-        # parse
-        self.species.parse_block(block)
-        # add to active list
-        self.active_blocks.append("species")
-
-    def _parse_moltypes(self, block):
-        # init
-        self.moltypes = MoleculeTypes()
-        # parse
-        self.moltypes.parse_block(block)
-        # add to active list
-        self.active_blocks.append("moltypes")
-
-    def _parse_observables(self, block):
-        # init
-        self.observables = Observables()
-        # parse
-        self.observables.parse_block(block)
-        # add to active list
-        self.active_blocks.append("observables")
-
-    def _parse_functions(self, block):
-        # init
-        self.functions = Functions()
-        # parse
-        self.functions.parse_block(block)
-        # add to active list
-        self.active_blocks.append("functions")
-
-    def _parse_rrules(self, block):
-        # init
-        self.rules = Rules()
-        # parse
-        self.rules.parse_block(block)
-        # add to active list
-        self.active_blocks.append("rules")
-
-    def _parse_actions(self, block):
-        # TODO: Finish this
-        # print("actions")
-        # print(block)
-        pass
-
-    def _parse_compartments(self, block):
-        # TODO: Finish this
-        compartments = list(map(lambda x: x.split(), block))
-        # print("compartments")
-        # print(compartments)
-        pass
 
     def write_model(self, file_name):
         '''
