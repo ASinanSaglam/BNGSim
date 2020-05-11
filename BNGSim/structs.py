@@ -81,6 +81,9 @@ class Parameters(ModelBlock):
                     new_value = float(value)
                     changed = True
                     self._item_dict[name] = new_value
+                    if hasattr(self, "expressions"):
+                        if name in self.expressions:
+                            self.expressions[name] = value
                 except:
                     self._item_dict[name] = value
         if changed:

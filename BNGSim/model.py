@@ -116,6 +116,7 @@ class BNGModel:
         with open(model_file, "r") as f:
             xml_str = "".join(f.readlines())
         xml_dict = xmltodict.parse(xml_str)
+        self.xml_dict = xml_dict
         xml_model = xml_dict['sbml']['model']
         self.model_name = xml_model['@id']
         for listkey in xml_model.keys():
@@ -309,6 +310,30 @@ class BNGModel:
             model_str += str(getattr(self, block))
         with open(file_name, 'w') as f:
             f.write(model_str)
+
+    def write_xml(self, file_name):
+        '''
+        write new XML to file by calling BNG2.pl again
+        '''
+        cur_dir = os.getcwd()
+        # temporary folder to work in
+        temp_folder = tempfile.mkdtemp()
+        # write the current model to temp folder
+        os.chdir(temp_folder)
+        with open("temp.bngl", "w") as f:
+            f.write(str(self))
+        # run with --xml 
+        # TODO: Make output supression an option somewhere
+        rc = subprocess.run(["perl",self.bngexec, "--xml", "temp.bngl"])
+        if rc.returncode == 1:
+            print("XML generation failed")
+            # go back to our original location
+            os.chdir(cur_dir)
+        else:
+            # we should now have the XML file 
+            fpath = os.path.join(cur_dir, file_name)
+            shutil.copy("temp.xml", fpath)
+            os.chdir(cur_dir)
 ###### CORE OBJECT AND PARSING FRONT-END ######
 
 if __name__ == "__main__":
