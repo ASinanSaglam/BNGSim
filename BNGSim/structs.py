@@ -13,8 +13,6 @@ class ModelBlock:
         # overwrites what the class representation
         # shows the items in the model block in 
         # say ipython
-        if hasattr(self, "expressions"):
-            return str(self.expressions)
         return str(self._item_dict)
 
     def __getitem__(self, key):
@@ -81,9 +79,6 @@ class Parameters(ModelBlock):
                     new_value = float(value)
                     changed = True
                     self._item_dict[name] = new_value
-                    if hasattr(self, "expressions"):
-                        if name in self.expressions:
-                            self.expressions[name] = value
                 except:
                     self._item_dict[name] = value
         if changed:
@@ -96,10 +91,7 @@ class Parameters(ModelBlock):
         # it's converted to string
         block_lines = ["\nbegin {}".format(self.name)]
         for item in self._item_dict.keys():
-            if item in self.expressions:
-                block_lines.append("  " + "{} {}".format(item, self.expressions[item]))
-            else:
-                block_lines.append("  " + "{} {}".format(item, self._item_dict[item]))
+            block_lines.append("  " + "{} {}".format(item, self._item_dict[item]))
         block_lines.append("end {}\n".format(self.name))
         return "\n".join(block_lines)
 
