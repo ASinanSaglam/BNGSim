@@ -40,7 +40,7 @@ class BNGSimulator:
         path to run the simulations so the simulators are entirely independent.
         '''
         if self.path is None:
-            workers = [BNGWorker(self, self.path) for i in range(self.ncores)]
+            workers = [BNGWorker(self, self.path) for i in range(self.nsims)]
         return workers 
 
     def get_model(self):
