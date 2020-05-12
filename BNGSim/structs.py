@@ -415,4 +415,38 @@ class Rules(ModelBlock):
         # delete items marked for deletion
         for del_item in delete_list:
             self._item_dict.pop(del_item)
+
+class Actions(ModelBlock):
+    def __init__(self):
+        super().__init__()
+        self.name = "actions"
+        self._action_list = ["generate_network", "generate_hybrid_model","simulate", "simulate_ode", "simulate_ssa", "simulate_pla", "simulate_nf", "parameter_scan", "bifurcate", "readFile", "writeFile", "writeModel", "writeNetwork", "writeXML", "writeSBML", "writeMfile", "writeMexfile", "writeMDL", "visualize", "setConcentration", "addConcentration", "saveConcentration", "resetConcentrations", "setParameter", "saveParameters", "resetParameters", "quit", "setModelName", "substanceUnits", "version", "setOption"]
+
+    def __str__(self):
+        # TODO: figure out every argument that has special 
+        # requirements, e.g. method requires the value to 
+        # be a string
+        block_lines = []
+        for item in self._item_dict.keys():
+            action_str = "{}(".format(item) + "{"
+            for iarg,arg in enumerate(self._item_dict[item]):
+                if iarg > 0:
+                    action_str += ","
+                if arg[0] == "method":
+                    action_str += '{}=>"{}"'.format(arg[0], arg[1])
+                else:
+                    action_str += '{}=>{}'.format(arg[0], arg[1])
+            action_str += "})"
+            block_lines.append(action_str)
+        return "\n".join(block_lines)
+
+    def add_action(self, action_type, action_args):
+        '''
+        adds action, needs type as string and args as list of tuples
+        (which preserve order) of (argument, value) pairs
+        '''
+        if action_type in self._action_list:
+            self._item_dict[action_type] = action_args
+        else:
+            print("Action type {} not valid".format(action_type))
 ###### MODEL STRUCTURES ###### 

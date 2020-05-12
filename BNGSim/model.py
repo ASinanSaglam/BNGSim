@@ -1,6 +1,6 @@
 import re, functools, subprocess, os, xmltodict, sys, shutil, tempfile
 from BNGSim.utils import find_BNG_path
-from BNGSim.structs import Parameters, Species, MoleculeTypes, Observables, Functions, Compartments, Rules
+from BNGSim.structs import Parameters, Species, MoleculeTypes, Observables, Functions, Compartments, Rules, Actions
 
 ###### CORE OBJECT AND PARSING FRONT-END ######
 class BNGModel:
@@ -13,7 +13,8 @@ class BNGModel:
         # every time
         self._action_list = ["generate_network(", "generate_hybrid_model(","simulate(", "simulate_ode(", "simulate_ssa(", "simulate_pla(", "simulate_nf(", "parameter_scan(", "bifurcate(", "readFile(", "writeFile(", "writeModel(", "writeNetwork(", "writeXML(", "writeSBML(", "writeMfile(", "writeMexfile(", "writeMDL(", "visualize(", "setConcentration(", "addConcentration(", "saveConcentration(", "resetConcentrations(", "setParameter(", "saveParameters(", "resetParameters(", "quit(", "setModelName(", "substanceUnits(", "version(", "setOption("]
         self.block_order = ["parameters", "compartments", "moltypes", 
-                            "species", "observables", "functions", "rules"]
+                            "species", "observables", "functions", 
+                            "rules", "actions"]
         BNGPATH, bngexec = find_BNG_path(BNGPATH)
         self.BNGPATH = BNGPATH
         self.bngexec = bngexec 
@@ -27,8 +28,11 @@ class BNGModel:
         model_str = "begin model\n"
         for block in self.block_order:
             if block in self.active_blocks:
-                model_str += str(getattr(self, block))
-        model_str += "\nend model"
+                if block != "actions":
+                    model_str += str(getattr(self, block))
+        model_str += "\nend model\n"
+        if "actions" in self.active_blocks:
+            model_str += str(self.actions)
         return model_str
 
     def __repr__(self):
@@ -166,6 +170,13 @@ class BNGModel:
                     self.active_blocks.append("functions")
         # And that's the end of parsing
         print("XML parsed")
+
+    def add_action(self, action_type, action_args):
+        # add actions block and to active list
+        if not hasattr(self, "actions"):
+            self.actions = Actions()
+            self.active_blocks.append("actions")
+        self.actions.add_action(action_type, action_args)
 
     def write_model(self, file_name):
         '''
