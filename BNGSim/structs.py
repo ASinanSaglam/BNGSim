@@ -1,4 +1,3 @@
-from collections import OrderedDict
 from BNGSim.patterns import ObsPattern, MolTypePattern, RulePattern, FuncPattern, SpeciesPattern
 
 ###### MODEL STRUCTURES ###### 
@@ -431,7 +430,8 @@ class Actions(ModelBlock):
         for item in self._item_dict.keys():
             action_str = "{}(".format(item) + "{"
             for iarg,arg in enumerate(self._item_dict[item]):
-                val = self._item_dict[item][arg]
+                val = arg[1]
+                arg = arg[0]
                 if iarg > 0:
                     action_str += ","
                 if arg == "method":
@@ -448,7 +448,10 @@ class Actions(ModelBlock):
         (which preserve order) of (argument, value) pairs
         '''
         if action_type in self._action_list:
-            self._item_dict[action_type] = OrderedDict(action_args)
+            self._item_dict[action_type] = action_args
         else:
             print("Action type {} not valid".format(action_type))
+
+    def clear_actions(self):
+        self._item_dict.clear()
 ###### MODEL STRUCTURES ###### 
