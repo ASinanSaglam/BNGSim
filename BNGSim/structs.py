@@ -451,4 +451,7 @@ class Actions(ModelBlock):
             self._item_dict[action_type] = action_args
         else:
             print("Action type {} not valid".format(action_type))
+
+    def clear_actions(self):
+        self._item_dict.clear()
 ###### MODEL STRUCTURES ###### 

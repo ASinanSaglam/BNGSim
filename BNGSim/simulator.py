@@ -134,6 +134,14 @@ class BNGSimulator:
             self.combined_results[i] = result.gdat[:]
         print("Results combined in combined_results attribute")
 
+    def simulate(self, start, end, nsteps, method="ode", nsims=1):
+        if hasattr(self.model, "actions"):
+            self.model.actions.clear_actions()
+        self.model.add_action("generate_network", [("overwrite",1)])
+        self.model.add_action("simulate", [("method",method), ("t_start",start), ("t_end",end), ("n_steps", nsteps)])
+        self.nsims = nsims
+        self.run()
+
     def run(self):
         '''
         Main way this class is intended to function
