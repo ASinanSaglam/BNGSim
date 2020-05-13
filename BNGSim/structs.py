@@ -5,7 +5,7 @@ from BNGSim.patterns import ObsPattern, MolTypePattern, RulePattern, FuncPattern
 # Objects in the model
 class ModelBlock:
     def __init__(self):
-        self._item_dict = {}
+        self._item_dict = OrderedDict()
 
     def __len__(self):
         return len(self._item_dict)
