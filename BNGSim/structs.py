@@ -1,3 +1,4 @@
+from collections import OrderedDict
 from BNGSim.patterns import ObsPattern, MolTypePattern, RulePattern, FuncPattern, SpeciesPattern
 
 ###### MODEL STRUCTURES ###### 
