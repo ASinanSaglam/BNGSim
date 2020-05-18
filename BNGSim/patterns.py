@@ -21,6 +21,8 @@ class Pattern:
         # changes 
         pat_str = ""
         for imol, mol in enumerate(self.molecules):
+            if imol > 0:
+                pat_str += "."
             pat_str += str(mol)
         return pat_str
 
@@ -157,7 +159,7 @@ class ObsPattern(Pattern):
             obs_res, mol_obj = self.mol_to_str(mol)
             if '@compartment' in patterns:
                 obs_str += "@{}:".format(patterns['@compartment'])
-                mol_obj.set_outer_compt(pattern['@compartment'])
+                mol_obj.set_outer_compt(patterns['@compartment'])
             obs_str += obs_res
             self.molecules.append(mol_obj)
         return obs_str
@@ -185,10 +187,11 @@ class SpeciesPattern(Pattern):
                 spec_res, ml = self.mol_to_str(pat)
                 if '@compartment' in pat:
                     spec_str += "@{}:".format(pat['@compartment'])
-                ml.set_outer_compt(outer_comp)
-                mol_list += ml
+                if ipat == 0:
+                    ml.set_outer_compt(outer_comp)
+                mol_list.append(ml)
                 spec_str += spec_res
-            self.molecules.append(mol_list)
+            self.molecules += mol_list
         else:
             spec_str, mol_obj = self.mol_to_str(pattern)
             mol_obj.set_outer_compt(outer_comp)
