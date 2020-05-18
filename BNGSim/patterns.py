@@ -1,4 +1,5 @@
 from BNGSim.bonds import Bonds
+from BNGSim.molecule import Molecule
 
 ###### PATTERNS ###### 
 class Pattern:
@@ -19,30 +20,8 @@ class Pattern:
         # this only runs when the underlying structure 
         # changes 
         pat_str = ""
-        for ipat, pat in enumerate(self.molecules):
-            for imol, mol in enumerate(pat):
-                if imol > 0:
-                    pat_str += "."
-                mol_str = mol["name"]
-                if imol == 0:
-                    if mol['outer_comp'] is not None:
-                        mol_str = "@{}:{}".format(mol['outer_comp'],mol_str)
-                if len(mol["components"]) > 0:
-                    mol_str += "("
-                    for icomp, comp in enumerate(mol["components"]):
-                        if icomp > 0:
-                            mol_str += ","
-                        comp_str = comp["name"]
-                        if "state" in comp:
-                            comp_str += "~{}".format(comp["state"])
-                        if "bonds" in comp:
-                            for bond in comp["bonds"]:
-                                comp_str += "!{}".format(bond)
-                        mol_str += comp_str 
-                    mol_str += ")"
-                pat_str += mol_str
-                if mol["compartment"] is not None:
-                    pat_str += "@{}".format(mol["compartment"])
+        for imol, mol in enumerate(self.molecules):
+            pat_str += str(mol)
         return pat_str
 
     def mol_to_str(self, mol_xml):
@@ -54,7 +33,7 @@ class Pattern:
             # for use later
             name = mol_xml['@name'] 
             # molecule dictionary
-            mol_dict = {"name": name, "components": [], "compartment": None} 
+            mol_dict = {"name": name, "components": [], "compartment": None, "outer_comp": None} 
             # start building the string
             mol_str = mol_xml["@name"] 
             if "ListOfComponents" in mol_xml:
@@ -75,7 +54,7 @@ class Pattern:
                 # we can have multiple copies with different 
                 # component states bound together. we need to
                 # somehow account for it
-                mol_dict = {"name": name, "components": [], "compartment": None}
+                mol_dict = {"name": name, "components": [], "compartment": None, "outer_comp": None}
                 if imol > 0:
                     # complexing
                     mol_str += "."
@@ -89,7 +68,8 @@ class Pattern:
                     mol_dict['compartment'] = mol['@compartment']
                     mol_str += "@{}".format(mol['@compartment'])
                 mol_list.append(mol_dict)
-        return mol_str, mol_list
+        mol_obj = Molecule(mol_list)
+        return mol_str, mol_obj
 
     def comp_to_str(self, comp_xml, mol_dict=None):
         # bonds = compartment id, bond id 
@@ -147,29 +127,7 @@ class ObsPattern(Pattern):
         for iobs, obs in enumerate(self.molecules):
             if iobs > 0:
                 obs_str += ","
-            for imolec, molecule in enumerate(obs):
-                if imolec > 0:
-                    obs_str += "."
-                molec_str = molecule["name"]
-                if imolec == 0:
-                    if "outer_comp" in molecule:
-                        molec_str = "@{}:{}".format(molecule['outer_comp'], molec_str)
-                if len(molecule["components"]) > 0:
-                    molec_str += "("
-                    for icomp, component in enumerate(molecule["components"]):
-                        comp_str = component["name"]
-                        if "state" in component:
-                            comp_str += "~{}".format(component["state"])
-                        if "bonds" in component:
-                            for bond in component["bonds"]:
-                                comp_str += "!{}".format(bond)
-                        if icomp > 0:
-                            molec_str += ","
-                        molec_str += comp_str
-                    molec_str += ")"
-                if molecule["compartment"] is not None:
-                    molec_str += "@{}".format(molecule["compartment"])
-                obs_str += molec_str
+            obs_str += str(obs)
         return obs_str
 
     def resolve_xml(self, obs_xml):
@@ -185,23 +143,23 @@ class ObsPattern(Pattern):
                 if ipattern > 0:
                     obs_str += ","
                 mol = pattern['ListOfMolecules']['Molecule']
-                obs_res, mol_list = self.mol_to_str(mol)
+                obs_res, mol_obj = self.mol_to_str(mol)
                 if '@compartment' in pattern:
                     obs_str += "@{}:".format(pattern['@compartment'])
-                    mol_list[0]['outer_comp'] = pattern['@compartment']
-                self.molecules.append(mol_list)
+                    mol_obj.set_outer_compt(pattern['@compartment'])
+                self.molecules.append(mol_obj)
                 obs_str += obs_res
         else:
             if "ListOfBonds" in patterns:
                 self.bonds.set_xml(patterns["ListOfBonds"]["Bond"])
             mol = patterns['ListOfMolecules']["Molecule"]
             obs_str = ""
-            obs_res, mol_list = self.mol_to_str(mol)
+            obs_res, mol_obj = self.mol_to_str(mol)
             if '@compartment' in patterns:
                 obs_str += "@{}:".format(patterns['@compartment'])
-                mol_list[0]['outer_comp'] = patterns['@compartment']
+                mol_obj.set_outer_compt(pattern['@compartment'])
             obs_str += obs_res
-            self.molecules.append(mol_list)
+            self.molecules.append(mol_obj)
         return obs_str
 
 class SpeciesPattern(Pattern):
@@ -227,14 +185,14 @@ class SpeciesPattern(Pattern):
                 spec_res, ml = self.mol_to_str(pat)
                 if '@compartment' in pat:
                     spec_str += "@{}:".format(pat['@compartment'])
-                ml[0]['outer_comp'] = outer_comp
+                ml.set_outer_compt(outer_comp)
                 mol_list += ml
                 spec_str += spec_res
             self.molecules.append(mol_list)
         else:
-            spec_str, mol_list = self.mol_to_str(pattern)
-            mol_list[0]['outer_comp'] = outer_comp
-            self.molecules.append(mol_list)
+            spec_str, mol_obj = self.mol_to_str(pattern)
+            mol_obj.set_outer_compt(outer_comp)
+            self.molecules.append(mol_obj)
         return spec_str
 
 class MolTypePattern(Pattern):
@@ -242,32 +200,12 @@ class MolTypePattern(Pattern):
         super().__init__(pattern_xml)
 
     def gen_string(self):
-        for ipat, pat in enumerate(self.molecules):
-            pat_str = ""
-            for imol, mol in enumerate(pat):
-                if imol > 0:
-                    pat_str += "."
-                mol_str = mol["name"]
-                if len(mol["components"]) > 0:
-                    mol_str += "("
-                    for icomp, comp in enumerate(mol["components"]):
-                        if icomp > 0:
-                            mol_str += ","
-                        comp_str = comp["name"]
-                        if "states" in comp:
-                            for istate, state in enumerate(comp["states"]):
-                                comp_str += "~{}".format(state)
-                        mol_str += comp_str 
-                    mol_str += ")"
-                pat_str += mol_str
-                if mol["compartment"] is not None:
-                    mol_str += "@{}".format(mol["compartment"])
-        return pat_str
+        return str(self.molecules[0])
 
     def resolve_xml(self, molt_xml):
         molt_str = molt_xml['@id'] 
         mol_list = []
-        mol_dict = {"name": molt_str, "components": [], "compartment": None}
+        mol_dict = {"name": molt_str, "components": [], "compartment": None, "outer_comp": None}
         if 'ListOfComponentTypes' in molt_xml:
             molt_str += "("
             comp_dict = molt_xml['ListOfComponentTypes']['ComponentType']
@@ -307,7 +245,7 @@ class MolTypePattern(Pattern):
                     mol_dict['components'].append(cd)
             molt_str += ")"
         mol_list.append(mol_dict)
-        self.molecules.append(mol_list)
+        self.molecules.append(Molecule(mol_list))
         return molt_str
 
 class RulePattern(Pattern):
@@ -326,29 +264,7 @@ class RulePattern(Pattern):
         for ipat, pat in enumerate(side_list):
             if ipat > 0:
                 pat_str += " + "
-            for imol, mol in enumerate(pat):
-                if imol > 0:
-                    pat_str += "."
-                mol_str = mol["name"]
-                if imol == 0:
-                    if mol['outer_comp'] is not None:
-                        mol_str = "@{}:{}".format(mol['outer_comp'],mol_str)
-                if len(mol["components"]) > 0:
-                    mol_str += "("
-                    for icomp, comp in enumerate(mol["components"]):
-                        if icomp > 0:
-                            mol_str += ","
-                        comp_str = comp["name"]
-                        if "state" in comp:
-                            comp_str += "~{}".format(comp["state"])
-                        if "bonds" in comp:
-                            for bond in comp["bonds"]:
-                                comp_str += "!{}".format(bond)
-                        mol_str += comp_str 
-                    mol_str += ")"
-                pat_str += mol_str
-                if mol["compartment"] is not None:
-                    pat_str += "@{}".format(mol["compartment"])
+            pat_str += str(pat)
         return pat_str
 
     def set_rate_law(self, rate_law):
@@ -418,16 +334,16 @@ class RulePattern(Pattern):
                     if ireact > 0:
                         react_str += " + "
                     # bonds should go here
-                    react_res, mol_dict = self.mol_to_str(react['ListOfMolecules']['Molecule'])
-                    mol_dict[0]['outer_comp'] = outer_comp
-                    sl.append(mol_dict)
+                    react_res, mol_obj = self.mol_to_str(react['ListOfMolecules']['Molecule'])
+                    mol_obj.set_outer_compt(outer_comp)
+                    sl.append(mol_obj)
                     react_str += react_res
             else: 
                 if "ListOfBonds" in side_list:
                     self.bonds.set_xml(side_list["ListOfBonds"]['Bond'])
-                react_res, mol_dict = self.mol_to_str(side_list['ListOfMolecules']['Molecule'])
-                mol_dict[0]['outer_comp'] = outer_comp
-                sl.append(mol_dict)
+                react_res, mol_obj = self.mol_to_str(side_list['ListOfMolecules']['Molecule'])
+                mol_obj.set_outer_compt(outer_comp)
+                sl.append(mol_obj)
                 react_str += react_res
             return react_str, sl
         elif "ProductPattern" in side_xml:
@@ -446,17 +362,17 @@ class RulePattern(Pattern):
                         self.bonds.set_xml(prod["ListOfBonds"]['Bond'])
                     if iprod > 0:
                         prod_str += " + "
-                    prod_res, mol_dict = self.mol_to_str(prod['ListOfMolecules']['Molecule'])
-                    mol_dict[0]['outer_comp'] = outer_comp
-                    sl.append(mol_dict)
+                    prod_res, mol_obj = self.mol_to_str(prod['ListOfMolecules']['Molecule'])
+                    mol_obj.set_outer_compt(outer_comp)
+                    sl.append(mol_obj)
                     prod_str += prod_res
             else: 
                 sl = []
                 if "ListOfBonds" in side_list:
                     self.bonds.set_xml(side_list["ListOfBonds"]['Bond'])
-                prod_res, mol_dict = self.mol_to_str(side_list['ListOfMolecules']['Molecule'])
-                mol_dict[0]['outer_comp'] = outer_comp
-                sl.append(mol_dict)
+                prod_res, mol_obj = self.mol_to_str(side_list['ListOfMolecules']['Molecule'])
+                mol_obj.set_outer_compt(outer_comp)
+                sl.append(mol_obj)
                 prod_str += prod_res
             return prod_str, sl
         else: 

@@ -5,3 +5,4 @@ from .patterns import ObsPattern, MolTypePattern, RulePattern, FuncPattern, Spec
 from .result import BNGResult
 from .worker import BNGWorker
 from .simulator import BNGSimulator
+from .molecule import Molecule
