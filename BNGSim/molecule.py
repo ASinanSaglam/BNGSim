@@ -36,3 +36,29 @@ class Molecule:
 
     def set_outer_compt(self, out_comp):
         self.mol_list[0]['outer_comp'] = out_comp
+
+    def add_component(self, name, state=None, states=None, num=None):
+        for imol, mol in enumerate(self.mol_list):
+            if num is not None:
+                if imol == num:
+                    comp_dict = {"name": name}
+                    if state is not None:
+                        comp_dict["state"] = state
+                    if states is not None:
+                        comp_dict["states"] = states
+                    mol['components'].append(comp_dict)
+            else:
+                comp_dict = {"name": name}
+                if state is not None:
+                    comp_dict["state"] = state
+                if states is not None:
+                    comp_dict["states"] = states
+                mol['components'].append(comp_dict)
+
+    def set_compartment(self, compt, num=None):
+        for imol, mol in enumerate(self.mol_list):
+            if num is not None:
+                if imol == num:
+                    mol['compartment'] = compt
+            else:
+                mol['compartment'] = compt
