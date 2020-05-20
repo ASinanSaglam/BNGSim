@@ -1,9 +1,8 @@
-from BNGSim.pattern import Pattern, Molecule, Bonds
+from BNGSim.pattern import Pattern, Molecule
 
 ###### XMLObjs ###### 
 class XMLObj:
     def __init__(self, xml):
-        self.items = []
         self.xml = xml
         self.resolve_xml(self.xml)
 
@@ -13,31 +12,21 @@ class XMLObj:
     def __str__(self):
         return self.gen_string()
 
-    def gen_string(self):
-        # TODO: Eventually slap in a mechanism where
-        # this only runs when the underlying structure 
-        # changes 
-        sstr = ""
-        for iitem, item in enumerate(self.items):
-            if iitem > 0:
-                sstr += "."
-            sstr += str(item)
-        return sstr
-
 class ObsXML(XMLObj):
     '''
     An observable is a list of patterns where a pattern
     is a list of molecules
     '''
     def __init__(self, xml):
+        self.patterns = []
         super().__init__(xml)
 
     def gen_string(self):
         obs_str = ""
-        for iobs, obs in enumerate(self.items):
-            if iobs > 0:
+        for ipat, pat in enumerate(self.patterns):
+            if ipat > 0:
                 obs_str += ","
-            obs_str += str(obs)
+            obs_str += str(pat)
         return obs_str
 
     def resolve_xml(self, obs_xml):
@@ -46,9 +35,9 @@ class ObsXML(XMLObj):
             # we have multiple patterns so this is a list
             for ipattern, pattern in enumerate(patterns): 
                 # 
-                self.items.append(Pattern(pattern))
+                self.patterns.append(Pattern(pattern))
         else:
-            self.items.append(Pattern(patterns))
+            self.patterns.append(Pattern(patterns))
 
 class SpeciesXML(XMLObj):
     '''
@@ -121,13 +110,13 @@ class RuleXML(XMLObj):
         else:
             return "{}: {} -> {} {}".format(self.name, self.side_string(self.lhs), self.side_string(self.rhs), self.rate_law[0])
 
-    def side_string(self, side):
-        pat_str = ""
-        for ipat, pat in enumerate(side):
+    def side_string(self, patterns):
+        side_str = ""
+        for ipat, pat in enumerate(patterns):
             if ipat > 0:
-                pat_str += " + "
-            pat_str += str(pat)
-        return pat_str
+                side_str += " + "
+            side_str += str(pat)
+        return side_str
 
     def set_rate_law(self, rate_law):
         if len(rate_law) == 1:
@@ -149,6 +138,7 @@ class RuleXML(XMLObj):
         if 'RateLaw' not in pattern_xml:
             print("Rule seems to be missing a rate law, please make sure that XML exporter of BNGL supports whatever you are doing!")
         self.rate_law = [self.resolve_ratelaw(pattern_xml['RateLaw'])]
+        self.rule_tpl = (self.lhs, self.rhs, self.rate_law)
 
     def resolve_ratelaw(self, rate_xml):
         rate_type = rate_xml['@type']
@@ -181,28 +171,27 @@ class RuleXML(XMLObj):
             # this is a lhs/reactant side
             sl = []
             side = side_xml['ReactantPattern']
-            # FIXME: how to tackle this?
             if '@compartment' in side:
-                outer_comp = side['@compartment']
+                self.lhs_comp = side['@compartment']
             else:
-                outer_comp = None
+                self.lhs_comp = None
             if isinstance(side, list):
-                # this is a list of reactants
+                # this is a list of reactant patterns
                 for ireact, react in enumerate(side):
                     sl.append(Pattern(react))
             else: 
                 sl.append(Pattern(side))
             return sl
         elif "ProductPattern" in side_xml:
+            # rhs/product side
             side = side_xml['ProductPattern']
             sl = []
-            # FIXME: how to tackle this?
             if '@compartment' in side:
-                outer_comp = side['@compartment']
+                self.rhs_comp = side['@compartment']
             else:
-                outer_comp = None
+                self.rhs_comp = None
             if isinstance(side, list):
-                # this is a list of reactants
+                # this is a list of product patterns
                 for iprod, prod in enumerate(side):
                     sl.append(Pattern(prod))
             else: 
