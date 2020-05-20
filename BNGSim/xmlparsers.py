@@ -2,7 +2,7 @@ from BNGSim.bonds import Bonds
 from BNGSim.molecule import Molecule
 
 ###### PATTERNS ###### 
-class Pattern:
+class XMLObj:
     def __init__(self, pattern_xml):
         self.molecules = []
         self.pattern_xml = pattern_xml
@@ -120,7 +120,7 @@ class Pattern:
                 mol_dict['components'].append(comp_dict)
         return comp_str
 
-class ObsPattern(Pattern):
+class ObsXML(XMLObj):
     def __init__(self, pattern_xml):
         super().__init__(pattern_xml)
 
@@ -164,7 +164,7 @@ class ObsPattern(Pattern):
             self.molecules.append(mol_obj)
         return obs_str
 
-class SpeciesPattern(Pattern):
+class SpeciesXML(XMLObj):
     def __init__(self, pattern_xml):
         super().__init__(pattern_xml)
 
@@ -198,7 +198,7 @@ class SpeciesPattern(Pattern):
             self.molecules.append(mol_obj)
         return spec_str
 
-class MolTypePattern(Pattern):
+class MolTypeXML(XMLObj):
     def __init__(self, pattern_xml):
         super().__init__(pattern_xml)
 
@@ -251,7 +251,7 @@ class MolTypePattern(Pattern):
         self.molecules.append(Molecule(mol_list))
         return molt_str
 
-class RulePattern(Pattern):
+class RuleXML(XMLObj):
     def __init__(self, pattern_xml):
         self.bidirectional = False
         super().__init__(pattern_xml)
@@ -381,7 +381,7 @@ class RulePattern(Pattern):
         else: 
             print("Can't parse rule XML {}".format(side_xml))
 
-class FuncPattern(Pattern):
+class FuncXML(XMLObj):
     def __init__(self, pattern_xml):
         super().__init__(pattern_xml)
 

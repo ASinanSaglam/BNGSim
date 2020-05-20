@@ -1,5 +1,5 @@
 from collections import OrderedDict
-from BNGSim.patterns import ObsPattern, MolTypePattern, RulePattern, FuncPattern, SpeciesPattern
+from BNGSim.xmlparsers import ObsXML, MolTypeXML, RuleXML, FuncXML, SpeciesXML
 
 ###### MODEL STRUCTURES ###### 
 # Objects in the model
@@ -143,7 +143,7 @@ class Species(ModelBlock):
 
     def __getitem__(self, key):
         if isinstance(key, str):
-            # our keys are pattern objects
+            # our keys are objects
             for ikey in self._item_dict:
                 if key == ikey.string:
                     return self._item_dict[ikey]
@@ -164,19 +164,13 @@ class Species(ModelBlock):
         return False
 
     def parse_xml_block(self, block_xml):
-        #TODO: Eventually regenerate patterns 
-        # with bond handling from XML instead of 
-        # reading the name directly to stay consistent
-        #TODO This is especially important since XML dumps 
-        # compartments with format @X::Species and that 
-        # seems uncommon currently
         if isinstance(block_xml, list):
             for sd in block_xml:
-                pattern = SpeciesPattern(sd)
-                self.add_item((pattern,sd['@concentration']))
+                xmlobj = SpeciesXML(sd)
+                self.add_item((xmlobj,sd['@concentration']))
         else:
-            pattern = SpeciesPattern(block_xml)
-            self.add_item((pattern,block_xml['@concentration']))
+            xmlobj = SpeciesXML(block_xml)
+            self.add_item((xmlobj,block_xml['@concentration']))
 
     def add_item(self, item_tpl):
         name, val = item_tpl
@@ -199,7 +193,7 @@ class MoleculeTypes(ModelBlock):
 
     def __getitem__(self, key):
         if isinstance(key, str):
-            # our keys are pattern objects
+            # our keys are objects
             for ikey in self._item_dict:
                 if key == ikey.string:
                     return self._item_dict[ikey]
@@ -231,11 +225,11 @@ class MoleculeTypes(ModelBlock):
     def parse_xml_block(self, block_xml):
         if isinstance(block_xml, list):
             for md in block_xml:
-                pattern = MolTypePattern(md)
-                self.add_item((pattern,))
+                xmlobj = MolTypeXML(md)
+                self.add_item((xmlobj,))
         else:
-            pattern = MolTypePattern(block_xml)
-            self.add_item((pattern,))
+            xmlobj = MolTypeXML(block_xml)
+            self.add_item((xmlobj,))
 
 
 class Observables(ModelBlock):
@@ -254,12 +248,12 @@ class Observables(ModelBlock):
         self.__dict__[name] = value
 
     def add_item(self, item_tpl): 
-        otype, name, pattern = item_tpl
-        self._item_dict[name] = [otype, pattern]
+        otype, name, obj = item_tpl
+        self._item_dict[name] = [otype, obj]
         try:
-            setattr(self, name, pattern)
+            setattr(self, name, obj)
         except:
-            print("can't set {} to {}".format(name, pattern))
+            print("can't set {} to {}".format(name, obj))
             pass
 
     def __str__(self):
@@ -284,11 +278,11 @@ class Observables(ModelBlock):
         #
         if isinstance(block_xml, list):
             for b in block_xml:
-                pattern = ObsPattern(b['ListOfPatterns'])
-                self.add_item((b['@type'], b['@name'], pattern))
+                xmlobj = ObsXML(b['ListOfPatterns'])
+                self.add_item((b['@type'], b['@name'], xmlobj))
         else: 
-            pattern = ObsPattern(block_xml['ListOfPatterns'])
-            self.add_item((block_xml['@type'], block_xml['@name'], pattern))
+            xmlobj = ObsXML(block_xml['ListOfPatterns'])
+            self.add_item((block_xml['@type'], block_xml['@name'], xmlobj))
         # 
 
 
@@ -314,11 +308,11 @@ class Functions(ModelBlock):
     def parse_xml_block(self, block_xml):
         if isinstance(block_xml, list):
              for func in block_xml:
-                 fpatt = FuncPattern(func)
-                 self.add_item(fpatt.item_tuple)
+                 xmlobj = FuncXML(func)
+                 self.add_item(xmlobj.item_tuple)
         else:
-             fpatt = FuncPattern(block_xml)
-             self.add_item(fpatt.item_tuple)
+             xmlobj = FuncXML(block_xml)
+             self.add_item(xmlobj.item_tuple)
 
 class Compartments(ModelBlock):
     '''
@@ -385,11 +379,11 @@ class Rules(ModelBlock):
     def parse_xml_block(self, block_xml):
         if isinstance(block_xml, list):
             for rd in block_xml:
-                rpattern = RulePattern(rd)
-                self.add_item((rpattern.name, rpattern))
+                xmlobj = RuleXML(rd)
+                self.add_item((xmlobj.name, xmlobj))
         else:
-            rpattern = RulePattern(block_xml)
-            self.add_item((rpattern.name, rpattern))
+            xmlobj = RuleXML(block_xml)
+            self.add_item((xmlobj.name, xmlobj))
         self.consolidate_rules()
 
     def consolidate_rules(self):
@@ -401,7 +395,7 @@ class Rules(ModelBlock):
         '''
         delete_list = []
         for item_key in self._item_dict:
-            rxn_pat = self._item_dict[item_key]
+            rxn_obj  = self._item_dict[item_key]
             if item_key.startswith("_reverse_"):
                 # this is the reverse of another reaction
                 reverse_of = item_key.replace("_reverse_", "")
@@ -409,7 +403,7 @@ class Rules(ModelBlock):
                 if reverse_of in self._item_dict:
                     # make bidirectional and add rate law
                     r1 = self._item_dict[reverse_of].rate_law[0]
-                    r2 = rxn_pat.rate_law[0]
+                    r2 = rxn_obj.rate_law[0]
                     self._item_dict[reverse_of].set_rate_law((r1,r2))
                     # mark reverse for deletion
                     delete_list.append(item_key)
