@@ -67,21 +67,18 @@ class SpeciesXML(XMLObj):
         self.pattern = Pattern(spec_xml)
 
 class MolTypeXML(XMLObj):
-    def __init__(self, pattern_xml):
-        super().__init__(pattern_xml)
+    def __init__(self, xml):
+        super().__init__(xml)
 
     def gen_string(self):
-        return str(self.items[0])
+        return str(self.molecule)
 
     def resolve_xml(self, molt_xml):
-        molt_str = molt_xml['@id'] 
-        mol_list = []
-        mol_dict = {"name": molt_str, "components": [], "compartment": None, "outer_comp": None}
+        molt_name = molt_xml['@id'] 
+        mol_dict = {"name": molt_name, "components": [], "compartment": None}
         if 'ListOfComponentTypes' in molt_xml:
-            molt_str += "("
             comp_dict = molt_xml['ListOfComponentTypes']['ComponentType']
             if '@id' in comp_dict:
-                molt_str += comp_dict['@id']
                 cd = {"name": comp_dict["@id"]}
                 if "ListOfAllowedStates" in comp_dict:
                     # we have states
@@ -89,18 +86,13 @@ class MolTypeXML(XMLObj):
                     cd["states"] = []
                     if isinstance(al_states, list):
                         for istate, state in enumerate(al_states):
-                            molt_str += "~{}".format(state['@id'])
                             cd["states"].append(state["@id"])
                     else:
-                        molt_str += "~{}".format(al_states['@id'])
                         cd["states"].append(state["@id"])
                 mol_dict["components"].append(cd)
             else:
                 # multiple components
                 for icomp, comp in enumerate(comp_dict):
-                    if icomp > 0:
-                        molt_str += ","
-                    molt_str += comp['@id']
                     cd = {"name": comp['@id']}
                     if "ListOfAllowedStates" in comp:
                         # we have states
@@ -108,16 +100,11 @@ class MolTypeXML(XMLObj):
                         cd['states'] = []
                         if isinstance(al_states, list):
                             for istate, state in enumerate(al_states):
-                                molt_str += "~{}".format(state['@id'])
                                 cd['states'].append(state['@id'])
                         else:
-                            molt_str += "~{}".format(al_states['@id'])
                             cd['states'].append(state['@id'])
                     mol_dict['components'].append(cd)
-            molt_str += ")"
-        mol_list.append(mol_dict)
-        self.items.append(Molecule(mol_list))
-        return molt_str
+        self.molecule = Molecule(mol_dict)
 
 class RuleXML(XMLObj):
     '''

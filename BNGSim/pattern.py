@@ -19,11 +19,11 @@ class Pattern:
             sstr += str(mol)
         return sstr
 
-    def __getitem__(self, key):
-        return self.molecules[key]
-
     def __repr__(self):
         return str(self)
+
+    def __getitem__(self, key):
+        return self.molecules[key]
 
     def parse_xml(self, xml):
         if '@compartment' in xml:
@@ -92,8 +92,6 @@ class Pattern:
                     comp_dict['bonds'].append(bi)
             comp_list.append(comp_dict)
         return comp_list
-
-
 
 class Molecule:
     def __init__(self,  mol_dict):
@@ -165,7 +163,6 @@ class Bonds:
         # ID str is looking like O1_P1_M2_C3
         # we are going to assume a 4-tuple per key
         id_list = id_str.split("_")
-        # id_tpl = tuple([self.get_tpl(x) for x in id_list])
         id_tpl = tuple(id_list)
         return id_tpl
 
@@ -173,10 +170,8 @@ class Bonds:
         s1 = bond["@site1"] 
         s2 = bond["@site2"]
         id_list_1 = s1.split("_")
-        #s1_tpl = tuple([int(x[1:]) for x in id_list_1])
         s1_tpl = tuple(id_list_1)
         id_list_2 = s2.split("_")
-        #s2_tpl = tuple([int(x[1:]) for x in id_list_2])
         s2_tpl = tuple(id_list_2)
         return (s1_tpl, s2_tpl) 
 
