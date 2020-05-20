@@ -21,6 +21,9 @@ class ObsXML(XMLObj):
         self.patterns = []
         super().__init__(xml)
 
+    def __iter__(self):
+        return self.patterns.__iter__()
+
     def gen_string(self):
         obs_str = ""
         for ipat, pat in enumerate(self.patterns):
@@ -49,6 +52,9 @@ class SpeciesXML(XMLObj):
     def __getitem__(self,key):
         return self.pattern[key]
 
+    def __iter__(self):
+        return self.pattern.__iter__()
+
     def gen_string(self):
         return str(self.pattern)
 
@@ -58,6 +64,9 @@ class SpeciesXML(XMLObj):
 class MolTypeXML(XMLObj):
     def __init__(self, xml):
         super().__init__(xml)
+
+    def add_component(self, name, states=None):
+        self.molecule.add_component(name, states=states)
 
     def gen_string(self):
         return str(self.molecule)
@@ -104,11 +113,14 @@ class RuleXML(XMLObj):
         self.bidirectional = False
         super().__init__(pattern_xml)
 
+    def __iter__(self):
+        return self.iter_tpl.__iter__()
+
     def gen_string(self):
         if self.bidirectional:
-            return "{}: {} <-> {} {},{}".format(self.name, self.side_string(self.lhs), self.side_string(self.rhs), self.rate_law[0], self.rate_law[1])
+            return "{}: {} <-> {} {},{}".format(self.name, self.side_string(self.lhs), self.side_string(self.rhs), self.rate_constants[0], self.rate_constants[1])
         else:
-            return "{}: {} -> {} {}".format(self.name, self.side_string(self.lhs), self.side_string(self.rhs), self.rate_law[0])
+            return "{}: {} -> {} {}".format(self.name, self.side_string(self.lhs), self.side_string(self.rhs), self.rate_constants[0])
 
     def side_string(self, patterns):
         side_str = ""
@@ -118,11 +130,11 @@ class RuleXML(XMLObj):
             side_str += str(pat)
         return side_str
 
-    def set_rate_law(self, rate_law):
-        if len(rate_law) == 1:
-            self.rate_law = [rate_law[0]]
-        elif len(rate_law) == 2: 
-            self.rate_law = [rate_law[0], rate_law[1]]
+    def set_rate_cts(self, rate_cts):
+        if len(rate_cts) == 1:
+            self.rate_cts= [rate_cts[0]]
+        elif len(rate_cts) == 2: 
+            self.rate_cts= [rate_cts[0], rate_cts[1]]
             self.bidirectional = True
         else:
             print("1 or 2 rate constants allowed")
@@ -137,8 +149,8 @@ class RuleXML(XMLObj):
         self.rhs = self.resolve_rxn_side(pattern_xml['ListOfProductPatterns'])
         if 'RateLaw' not in pattern_xml:
             print("Rule seems to be missing a rate law, please make sure that XML exporter of BNGL supports whatever you are doing!")
-        self.rate_law = [self.resolve_ratelaw(pattern_xml['RateLaw'])]
-        self.rule_tpl = (self.lhs, self.rhs, self.rate_law)
+        self.rate_constants = [self.resolve_ratelaw(pattern_xml['RateLaw'])]
+        self.rule_tpl = (self.lhs, self.rhs, self.rate_constants)
 
     def resolve_ratelaw(self, rate_xml):
         rate_type = rate_xml['@type']

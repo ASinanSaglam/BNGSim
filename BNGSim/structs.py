@@ -233,7 +233,6 @@ class MoleculeTypes(ModelBlock):
 
 
 class Observables(ModelBlock):
-    # TODO: Compartments
     '''
     Class for observables
     '''
@@ -369,12 +368,14 @@ class Rules(ModelBlock):
         self.name = "reaction rules"
 
     def __str__(self):
-        # TODO: printing also needs a lot of adjusting
         block_lines = ["\nbegin {}".format(self.name)]
         for item in self._item_dict.keys():
             block_lines.append(str(self._item_dict[item]))
         block_lines.append("end {}\n".format(self.name))
         return "\n".join(block_lines)
+
+    def __iter__(self):
+        return self._item_dict.values().__iter__()
 
     def parse_xml_block(self, block_xml):
         if isinstance(block_xml, list):
@@ -402,9 +403,9 @@ class Rules(ModelBlock):
                 # ensure we have the original
                 if reverse_of in self._item_dict:
                     # make bidirectional and add rate law
-                    r1 = self._item_dict[reverse_of].rate_law[0]
-                    r2 = rxn_obj.rate_law[0]
-                    self._item_dict[reverse_of].set_rate_law((r1,r2))
+                    r1 = self._item_dict[reverse_of].rate_constants[0]
+                    r2 = rxn_obj.rate_constants[0]
+                    self._item_dict[reverse_of].set_rate_constants((r1,r2))
                     # mark reverse for deletion
                     delete_list.append(item_key)
         # delete items marked for deletion

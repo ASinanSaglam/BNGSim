@@ -4,7 +4,7 @@ class Pattern:
     A list of molecules
     '''
     def __init__(self, pattern_xml):
-        self.bonds = Bonds()
+        self._bonds = Bonds()
         self.molecules = []
         # sets self.molecules up 
         self.parse_xml(pattern_xml)
@@ -25,13 +25,16 @@ class Pattern:
     def __getitem__(self, key):
         return self.molecules[key]
 
+    def __iter__(self):
+        return self.molecules.__iter__()
+
     def parse_xml(self, xml):
         if '@compartment' in xml:
             self.outer_comp = xml['@compartment']
         else:
             self.outer_comp = None
         if "ListOfBonds" in xml:
-            self.bonds.set_xml(xml["ListOfBonds"]["Bond"])
+            self._bonds.set_xml(xml["ListOfBonds"]["Bond"])
         mols = xml['ListOfMolecules']['Molecule']
         if isinstance(mols, list):
             # list of molecules
@@ -73,7 +76,7 @@ class Pattern:
                     comp_dict['state'] = comp['@state']
                 if comp["@numberOfBonds"] != '0':
                     comp_dict['bonds'] = []
-                    bond_id = self.bonds.get_bond_id(comp)
+                    bond_id = self._bonds.get_bond_id(comp)
                     for bi in bond_id:
                         comp_dict['bonds'].append(bi)
                 comp_list.append(comp_dict)
@@ -87,7 +90,7 @@ class Pattern:
                 comp_dict['state'] = comp_xml['@state']
             if comp_xml['@numberOfBonds'] != '0':
                 comp_dict['bonds'] = []
-                bond_id = self.bonds.get_bond_id(comp_xml)
+                bond_id = self._bonds.get_bond_id(comp_xml)
                 for bi in bond_id:
                     comp_dict['bonds'].append(bi)
             comp_list.append(comp_dict)
@@ -96,6 +99,7 @@ class Pattern:
 class Molecule:
     def __init__(self,  mol_dict):
         self.mol_dict = mol_dict
+        self.__dict__.update(mol_dict)
 
     def __str__(self):
         mol = self.mol_dict
