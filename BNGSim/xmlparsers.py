@@ -1,13 +1,11 @@
-from BNGSim.bonds import Bonds
-from BNGSim.molecule import Molecule
+from BNGSim.pattern import Pattern, Molecule, Bonds
 
-###### PATTERNS ###### 
+###### XMLObjs ###### 
 class XMLObj:
-    def __init__(self, pattern_xml):
-        self.molecules = []
-        self.pattern_xml = pattern_xml
-        self.bonds = Bonds()
-        self.string = self.resolve_xml(self.pattern_xml)
+    def __init__(self, xml):
+        self.items = []
+        self.xml = xml
+        self.resolve_xml(self.xml)
 
     def __repr__(self):
         return self.gen_string()
@@ -19,114 +17,24 @@ class XMLObj:
         # TODO: Eventually slap in a mechanism where
         # this only runs when the underlying structure 
         # changes 
-        pat_str = ""
-        for imol, mol in enumerate(self.molecules):
-            if imol > 0:
-                pat_str += "."
-            pat_str += str(mol)
-        return pat_str
-
-    def mol_to_str(self, mol_xml):
-        # TODO: Document, especially the bond mechanism
-        mol_list = []
-        if not isinstance(mol_xml, list):
-            # we are going to store molecules, components
-            # and compartments in a separate dictionary 
-            # for use later
-            name = mol_xml['@name'] 
-            # molecule dictionary
-            mol_dict = {"name": name, "components": [], "compartment": None, "outer_comp": None} 
-            # start building the string
-            mol_str = mol_xml["@name"] 
-            if "ListOfComponents" in mol_xml:
-                mol_str += "("
-                # Single molecule can't have bonds
-                comp_str = self.comp_to_str(mol_xml["ListOfComponents"]["Component"], mol_dict=mol_dict)
-                mol_str += comp_str
-                mol_str += ")"
-            if '@compartment' in mol_xml:
-                mol_dict['compartment'] = mol_xml['@compartment']
-                mol_str += "@{}".format(mol_xml['@compartment'])
-            mol_list.append(mol_dict)
-        else:
-            # this means we have multiple molecules bonding
-            mol_str = ""
-            for imol, mol in enumerate(mol_xml):
-                name = mol['@name']
-                # we can have multiple copies with different 
-                # component states bound together. we need to
-                # somehow account for it
-                mol_dict = {"name": name, "components": [], "compartment": None, "outer_comp": None}
-                if imol > 0:
-                    # complexing
-                    mol_str += "."
-                mol_str += mol["@name"] 
-                if "ListOfComponents" in mol:
-                    mol_str += "("
-                    comp_str = self.comp_to_str(mol['ListOfComponents']['Component'], mol_dict=mol_dict)
-                    mol_str += comp_str
-                    mol_str += ")"
-                if '@compartment' in mol:
-                    mol_dict['compartment'] = mol['@compartment']
-                    mol_str += "@{}".format(mol['@compartment'])
-                mol_list.append(mol_dict)
-        mol_obj = Molecule(mol_list)
-        return mol_str, mol_obj
-
-    def comp_to_str(self, comp_xml, mol_dict=None):
-        # bonds = compartment id, bond id 
-        # comp xml can be a list or a dict
-        if isinstance(comp_xml, list):
-            # we have multiple and this is a list
-            comp_str = ""
-            for icomp, comp in enumerate(comp_xml):
-                comp_dict = {}
-                if icomp > 0:
-                    comp_str += ","
-                comp_str += comp['@name']
-                comp_dict['name'] = comp['@name']
-                if "@label" in comp:
-                    comp_dict['label'] = comp['@label']
-                    comp_str += "%{}".format(comp['@label'])
-                if "@state" in comp:
-                    comp_dict['state'] = comp['@state']
-                    comp_str += "~{}".format(comp['@state'])
-                if comp["@numberOfBonds"] != '0':
-                    comp_dict['bonds'] = []
-                    bond_id = self.bonds.get_bond_id(comp)
-                    for bi in bond_id:
-                        comp_dict['bonds'].append(bi)
-                        comp_str += "!{}".format(bi)
-                if mol_dict is not None:
-                    mol_dict['components'].append(comp_dict)
-        else:
-            # single comp, this is a dict
-            comp_dict = {}
-            comp_str = comp_xml['@name']
-            comp_dict['name'] = comp_xml['@name']
-            if "@label" in comp_xml:
-                comp_dict['label'] = comp_xml['@label']
-                comp_str += "%{}".format(comp_xml['@label'])
-            if "@state" in comp_xml:
-                comp_dict['state'] = comp_xml['@state']
-                comp_str += "~{}".format(comp_xml['@state'])
-            if comp_xml['@numberOfBonds'] != '0':
-                comp_dict['bonds'] = []
-                bond_id = self.bonds.get_bond_id(comp_xml)
-                for bi in bond_id:
-                    comp_dict['bonds'].append(bi)
-                    comp_str += "!{}".format(bi)
-            if mol_dict is not None:
-                mol_dict['components'].append(comp_dict)
-        return comp_str
+        sstr = ""
+        for iitem, item in enumerate(self.items):
+            if iitem > 0:
+                sstr += "."
+            sstr += str(item)
+        return sstr
 
 class ObsXML(XMLObj):
-    def __init__(self, pattern_xml):
-        super().__init__(pattern_xml)
+    '''
+    An observable is a list of patterns where a pattern
+    is a list of molecules
+    '''
+    def __init__(self, xml):
+        super().__init__(xml)
 
     def gen_string(self):
         obs_str = ""
-        for iobs, obs in enumerate(self.molecules):
+        for iobs, obs in enumerate(self.items):
             if iobs > 0:
                 obs_str += ","
             obs_str += str(obs)
@@ -135,75 +43,35 @@ class ObsXML(XMLObj):
     def resolve_xml(self, obs_xml):
         patterns = obs_xml['Pattern']
         if isinstance(patterns, list):
-            # we have multiple stuff so this becomes a list
-            obs_str = ""
-            obs_list = []
+            # we have multiple patterns so this is a list
             for ipattern, pattern in enumerate(patterns): 
                 # 
-                if "ListOfBonds" in pattern:
-                    self.bonds.set_xml(pattern["ListOfBonds"]["Bond"])
-                if ipattern > 0:
-                    obs_str += ","
-                mol = pattern['ListOfMolecules']['Molecule']
-                obs_res, mol_obj = self.mol_to_str(mol)
-                if '@compartment' in pattern:
-                    obs_str += "@{}:".format(pattern['@compartment'])
-                    mol_obj.set_outer_compt(pattern['@compartment'])
-                self.molecules.append(mol_obj)
-                obs_str += obs_res
+                self.items.append(Pattern(pattern))
         else:
-            if "ListOfBonds" in patterns:
-                self.bonds.set_xml(patterns["ListOfBonds"]["Bond"])
-            mol = patterns['ListOfMolecules']["Molecule"]
-            obs_str = ""
-            obs_res, mol_obj = self.mol_to_str(mol)
-            if '@compartment' in patterns:
-                obs_str += "@{}:".format(patterns['@compartment'])
-                mol_obj.set_outer_compt(patterns['@compartment'])
-            obs_str += obs_res
-            self.molecules.append(mol_obj)
-        return obs_str
+            self.items.append(Pattern(patterns))
 
 class SpeciesXML(XMLObj):
-    def __init__(self, pattern_xml):
-        super().__init__(pattern_xml)
+    '''
+    A species is a list of molecules
+    '''
+    def __init__(self, xml):
+        super().__init__(xml)
+
+    def __getitem__(self,key):
+        return self.pattern[key]
+
+    def gen_string(self):
+        return str(self.pattern)
 
     def resolve_xml(self, spec_xml):
-        pattern = spec_xml['ListOfMolecules']['Molecule']
-        if "@compartment" in spec_xml:
-            outer_comp = spec_xml["@compartment"]
-        else:
-            outer_comp = None
-        # bonds stored in spec_xml
-        if "ListOfBonds" in spec_xml:
-            self.bonds.set_xml(spec_xml["ListOfBonds"]["Bond"])
-        # list of a singular species?
-        mol_list = []
-        if isinstance(pattern, list):
-            spec_str = ""
-            for ipat, pat in enumerate(pattern): 
-                if ipat > 0:
-                    spec_str += "."
-                spec_res, ml = self.mol_to_str(pat)
-                if '@compartment' in pat:
-                    spec_str += "@{}:".format(pat['@compartment'])
-                if ipat == 0:
-                    ml.set_outer_compt(outer_comp)
-                mol_list.append(ml)
-                spec_str += spec_res
-            self.molecules += mol_list
-        else:
-            spec_str, mol_obj = self.mol_to_str(pattern)
-            mol_obj.set_outer_compt(outer_comp)
-            self.molecules.append(mol_obj)
-        return spec_str
+        self.pattern = Pattern(spec_xml)
 
 class MolTypeXML(XMLObj):
     def __init__(self, pattern_xml):
         super().__init__(pattern_xml)
 
     def gen_string(self):
-        return str(self.molecules[0])
+        return str(self.items[0])
 
     def resolve_xml(self, molt_xml):
         molt_str = molt_xml['@id'] 
@@ -248,23 +116,27 @@ class MolTypeXML(XMLObj):
                     mol_dict['components'].append(cd)
             molt_str += ")"
         mol_list.append(mol_dict)
-        self.molecules.append(Molecule(mol_list))
+        self.items.append(Molecule(mol_list))
         return molt_str
 
 class RuleXML(XMLObj):
+    '''
+    A rule is a tuple (list of reactant patterns, list of 
+    product patterns, list of rate constant functions)
+    '''
     def __init__(self, pattern_xml):
         self.bidirectional = False
         super().__init__(pattern_xml)
 
     def gen_string(self):
         if self.bidirectional:
-            return "{}: {} <-> {} {},{}".format(self.name, self.side_string(self.lhs_list), self.side_string(self.rhs_list), self.rate_law[0], self.rate_law[1])
+            return "{}: {} <-> {} {},{}".format(self.name, self.side_string(self.lhs), self.side_string(self.rhs), self.rate_law[0], self.rate_law[1])
         else:
-            return "{}: {} -> {} {}".format(self.name, self.side_string(self.lhs_list), self.side_string(self.rhs_list), self.rate_law[0])
+            return "{}: {} -> {} {}".format(self.name, self.side_string(self.lhs), self.side_string(self.rhs), self.rate_law[0])
 
-    def side_string(self, side_list):
+    def side_string(self, side):
         pat_str = ""
-        for ipat, pat in enumerate(side_list):
+        for ipat, pat in enumerate(side):
             if ipat > 0:
                 pat_str += " + "
             pat_str += str(pat)
@@ -285,8 +157,8 @@ class RuleXML(XMLObj):
         # 
         rule_name = pattern_xml['@name']
         self.name = rule_name
-        self.lhs, self.lhs_list = self.resolve_rxn_side(pattern_xml['ListOfReactantPatterns'])
-        self.rhs, self.rhs_list = self.resolve_rxn_side(pattern_xml['ListOfProductPatterns'])
+        self.lhs = self.resolve_rxn_side(pattern_xml['ListOfReactantPatterns'])
+        self.rhs = self.resolve_rxn_side(pattern_xml['ListOfProductPatterns'])
         if 'RateLaw' not in pattern_xml:
             print("Rule seems to be missing a rate law, please make sure that XML exporter of BNGL supports whatever you are doing!")
         self.rate_law = [self.resolve_ratelaw(pattern_xml['RateLaw'])]
@@ -317,67 +189,38 @@ class RuleXML(XMLObj):
     def resolve_rxn_side(self, side_xml):
         # this is either reactant or product
         if side_xml is None:
-            return "0", [[None]]
+            return [None]
         elif 'ReactantPattern' in side_xml:
             # this is a lhs/reactant side
             sl = []
-            side_list = side_xml['ReactantPattern']
-            if '@compartment' in side_list:
-                react_str = "@{}:".format(side_list['@compartment'])
-                outer_comp = side_list['@compartment']
+            side = side_xml['ReactantPattern']
+            # FIXME: how to tackle this?
+            if '@compartment' in side:
+                outer_comp = side['@compartment']
             else:
-                react_str = ""
                 outer_comp = None
-            if isinstance(side_list, list):
-                # side list to save
+            if isinstance(side, list):
                 # this is a list of reactants
-                for ireact, react in enumerate(side_list):
-                    if "ListOfBonds" in react:
-                        self.bonds.set_xml(react["ListOfBonds"]['Bond'])
-                    if ireact > 0:
-                        react_str += " + "
-                    # bonds should go here
-                    react_res, mol_obj = self.mol_to_str(react['ListOfMolecules']['Molecule'])
-                    mol_obj.set_outer_compt(outer_comp)
-                    sl.append(mol_obj)
-                    react_str += react_res
+                for ireact, react in enumerate(side):
+                    sl.append(Pattern(react))
             else: 
-                if "ListOfBonds" in side_list:
-                    self.bonds.set_xml(side_list["ListOfBonds"]['Bond'])
-                react_res, mol_obj = self.mol_to_str(side_list['ListOfMolecules']['Molecule'])
-                mol_obj.set_outer_compt(outer_comp)
-                sl.append(mol_obj)
-                react_str += react_res
-            return react_str, sl
+                sl.append(Pattern(side))
+            return sl
         elif "ProductPattern" in side_xml:
-            side_list = side_xml['ProductPattern']
+            side = side_xml['ProductPattern']
             sl = []
-            if '@compartment' in side_list:
-                prod_str = "@{}:".format(side_list['@compartment'])
-                outer_comp = side_list['@compartment']
+            # FIXME: how to tackle this?
+            if '@compartment' in side:
+                outer_comp = side['@compartment']
             else:
-                prod_str = ""
                 outer_comp = None
-            if isinstance(side_list, list):
+            if isinstance(side, list):
                 # this is a list of reactants
-                for iprod, prod in enumerate(side_list):
-                    if "ListOfBonds" in prod:
-                        self.bonds.set_xml(prod["ListOfBonds"]['Bond'])
-                    if iprod > 0:
-                        prod_str += " + "
-                    prod_res, mol_obj = self.mol_to_str(prod['ListOfMolecules']['Molecule'])
-                    mol_obj.set_outer_compt(outer_comp)
-                    sl.append(mol_obj)
-                    prod_str += prod_res
+                for iprod, prod in enumerate(side):
+                    sl.append(Pattern(prod))
             else: 
-                sl = []
-                if "ListOfBonds" in side_list:
-                    self.bonds.set_xml(side_list["ListOfBonds"]['Bond'])
-                prod_res, mol_obj = self.mol_to_str(side_list['ListOfMolecules']['Molecule'])
-                mol_obj.set_outer_compt(outer_comp)
-                sl.append(mol_obj)
-                prod_str += prod_res
-            return prod_str, sl
+                sl.append(Pattern(side))
+            return sl
         else: 
             print("Can't parse rule XML {}".format(side_xml))
 
