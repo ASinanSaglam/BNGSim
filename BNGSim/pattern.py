@@ -101,6 +101,9 @@ class Molecule:
         self.mol_dict = mol_dict
         self.__dict__.update(mol_dict)
 
+    def __repr__(self):
+        return str(self)
+
     def __str__(self):
         mol = self.mol_dict
         mol_str = mol["name"]

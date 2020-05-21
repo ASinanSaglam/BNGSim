@@ -24,6 +24,9 @@ class ObsXML(XMLObj):
     def __iter__(self):
         return self.patterns.__iter__()
 
+    def __getitem__(self, key):
+        return self.patterns[key]
+
     def gen_string(self):
         obs_str = ""
         for ipat, pat in enumerate(self.patterns):
