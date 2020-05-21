@@ -127,9 +127,9 @@ class RuleXML(XMLObj):
 
     def set_rate_constants(self, rate_cts):
         if len(rate_cts) == 1:
-            self.rate_cts= [rate_cts[0]]
+            self.rate_constants = [rate_cts[0]]
         elif len(rate_cts) == 2: 
-            self.rate_cts= [rate_cts[0], rate_cts[1]]
+            self.rate_constants = [rate_cts[0], rate_cts[1]]
             self.bidirectional = True
         else:
             print("1 or 2 rate constants allowed")
