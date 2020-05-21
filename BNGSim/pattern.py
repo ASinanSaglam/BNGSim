@@ -138,6 +138,8 @@ class Molecule:
                 # for any other pattern
                 if "state" in comp:
                     comp_str += "~{}".format(comp["state"])
+                if "label" in comp:
+                    comp_str += "%{}".format(comp["label"])
                 if "bonds" in comp:
                     for bond in comp["bonds"]:
                         comp_str += "!{}".format(bond)
