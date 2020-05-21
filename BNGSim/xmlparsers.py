@@ -173,7 +173,7 @@ class RuleXML(XMLObj):
     def resolve_rxn_side(self, side_xml):
         # this is either reactant or product
         if side_xml is None:
-            return [None]
+            return [Molecule()]
         elif 'ReactantPattern' in side_xml:
             # this is a lhs/reactant side
             sl = []

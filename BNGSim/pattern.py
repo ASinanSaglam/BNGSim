@@ -97,9 +97,14 @@ class Pattern:
         return comp_list
 
 class Molecule:
-    def __init__(self,  mol_dict):
-        self.mol_dict = mol_dict
-        self.__dict__.update(mol_dict)
+    def __init__(self,  mol_dict=None):
+        if mol_dict is not None:
+            self.mol_dict = mol_dict
+            self.__dict__.update(mol_dict)
+        else:
+            self.mol_dict = {"name": "0", 
+                    "components": [], 
+                    "compartment": None} 
 
     def __repr__(self):
         return str(self)
