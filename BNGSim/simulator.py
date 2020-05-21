@@ -96,19 +96,21 @@ class BNGSimulator:
                 #else:
                 #    grp.attrs["net_file"] = result.net
                 # Let's save cdat/gdats
-                if isinstance(result.gdat, dict):
-                    gdat_grp = grp.create_group("gdat")
-                    for key in result.gdat.keys():
-                        gdat_grp.create_dataset(key, data=result.gdat[key], dtype=result.gdat[key].dtype)
-                else:
-                    gdat_obj = grp.create_dataset("gdat", data=result.gdat, dtype=result.gdat.dtype)
+                if hasattr(result, "gdat"):
+                    if isinstance(result.gdat, dict):
+                        gdat_grp = grp.create_group("gdat")
+                        for key in result.gdat.keys():
+                            gdat_grp.create_dataset(key, data=result.gdat[key], dtype=result.gdat[key].dtype)
+                    else:
+                        gdat_obj = grp.create_dataset("gdat", data=result.gdat, dtype=result.gdat.dtype)
                 # now the same for cdat
-                if isinstance(result.cdat, dict):
-                    cdat_grp = grp.create_group("cdat")
-                    for key in result.cdat.keys():
-                        cdat_grp.create_dataset(key, data=result.cdat[key], dtype=result.cdat[key].dtype)
-                else:
-                    cdat_obj = grp.create_dataset("cdat", data=result.cdat, dtype=result.cdat.dtype)
+                if hasattr(result, "cdat"):
+                    if isinstance(result.cdat, dict):
+                        cdat_grp = grp.create_group("cdat")
+                        for key in result.cdat.keys():
+                            cdat_grp.create_dataset(key, data=result.cdat[key], dtype=result.cdat[key].dtype)
+                    else:
+                        cdat_obj = grp.create_dataset("cdat", data=result.cdat, dtype=result.cdat.dtype)
             if combined:
                 if self.combined_results is not None:
                     combined_obj = h.create_dataset("combined_results", data=self.combined_results,
