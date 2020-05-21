@@ -68,7 +68,7 @@ class MolTypeXML(XMLObj):
 
     def resolve_xml(self, molt_xml):
         molt_name = molt_xml['@id'] 
-        mol_dict = {"name": molt_name, "components": [], "compartment": None}
+        mol_dict = {"name": molt_name, "components": [], "compartment": None, "label": None}
         if 'ListOfComponentTypes' in molt_xml:
             comp_dict = molt_xml['ListOfComponentTypes']['ComponentType']
             if '@id' in comp_dict:

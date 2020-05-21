@@ -14,6 +14,8 @@ class Pattern:
         for imol, mol in enumerate(self.molecules):
             if imol == 0 and self.outer_comp is not None:
                 sstr += "@{}:".format(self.outer_comp)
+            if imol == 0 and self.outer_label is not None:
+                sstr += "%{}:".format(self.outer_label)
             if imol > 0:
                 sstr += "."
             sstr += str(mol)
@@ -33,6 +35,10 @@ class Pattern:
             self.outer_comp = xml['@compartment']
         else:
             self.outer_comp = None
+        if "@label" in xml:
+            self.outer_label = xml["@label"]
+        else: 
+            self.outer_label = None
         if "ListOfBonds" in xml:
             self._bonds.set_xml(xml["ListOfBonds"]["Bond"])
         mols = xml['ListOfMolecules']['Molecule']
@@ -51,8 +57,12 @@ class Pattern:
         # and compartments in a separate dictionary 
         # for use later
         name = mol_xml['@name'] 
+        if "@label" in mol_xml:
+            label = mol_xml["@label"]
+        else:
+            label = None
         # molecule dictionary
-        mol_dict = {"name": name, "components": [], "compartment": None} 
+        mol_dict = {"name": name, "components": [], "compartment": None, "label": label} 
         if "ListOfComponents" in mol_xml:
             # Single molecule can't have bonds
             mol_dict['components'] = self.process_comp(mol_xml["ListOfComponents"]["Component"])
@@ -104,7 +114,8 @@ class Molecule:
         else:
             self.mol_dict = {"name": "0", 
                     "components": [], 
-                    "compartment": None} 
+                    "compartment": None,
+                    "label": None} 
 
     def __repr__(self):
         return str(self)
@@ -130,6 +141,8 @@ class Molecule:
                         comp_str += "!{}".format(bond)
                 mol_str += comp_str 
             mol_str += ")"
+        if mol["label"] is not None:
+            mol_str += "%{}".format(mol["label"])
         if mol["compartment"] is not None:
             mol_str += "@{}".format(mol["compartment"])
         return mol_str
@@ -144,6 +157,9 @@ class Molecule:
 
     def set_compartment(self, compt):
         self.mol_dict['compartment'] = compt
+    
+    def set_label(self, label):
+        self.mol_dict['label'] = label
 
 ###### BONDS #####
 class Bonds:
