@@ -1,4 +1,4 @@
-from BNGSim.pattern import Pattern, Molecule
+from BNGSim.pattern import Pattern, Molecule, Bonds
 
 ###### XMLObjs ###### 
 class XMLObj:
@@ -42,24 +42,16 @@ class ObsXML(XMLObj):
         else:
             self.patterns.append(Pattern(patterns))
 
-class SpeciesXML(XMLObj):
+class SpeciesXML(Pattern):
     '''
     A species is a list of molecules
     '''
     def __init__(self, xml):
-        super().__init__(xml)
-
-    def __getitem__(self,key):
-        return self.pattern[key]
-
-    def __iter__(self):
-        return self.pattern.__iter__()
-
-    def gen_string(self):
-        return str(self.pattern)
-
-    def resolve_xml(self, spec_xml):
-        self.pattern = Pattern(spec_xml)
+        self.xml = xml
+        self._bonds = Bonds()
+        self.molecules = []
+        # sets self.molecules up 
+        self.parse_xml(xml)
 
 class MolTypeXML(XMLObj):
     def __init__(self, xml):
