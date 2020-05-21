@@ -95,7 +95,7 @@ class MolTypeXML(XMLObj):
                             for istate, state in enumerate(al_states):
                                 cd['states'].append(state['@id'])
                         else:
-                            cd['states'].append(state['@id'])
+                            cd['states'].append(al_states['@id'])
                     mol_dict['components'].append(cd)
         self.molecule = Molecule(mol_dict)
 
@@ -125,7 +125,7 @@ class RuleXML(XMLObj):
             side_str += str(pat)
         return side_str
 
-    def set_rate_cts(self, rate_cts):
+    def set_rate_constants(self, rate_cts):
         if len(rate_cts) == 1:
             self.rate_cts= [rate_cts[0]]
         elif len(rate_cts) == 2: 
