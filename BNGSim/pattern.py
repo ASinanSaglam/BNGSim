@@ -123,6 +123,8 @@ class Molecule:
     def __str__(self):
         mol = self.mol_dict
         mol_str = mol["name"]
+        if mol["label"] is not None:
+            mol_str += "%{}".format(mol["label"])
         if len(mol["components"]) > 0:
             mol_str += "("
             for icomp, comp in enumerate(mol["components"]):
@@ -141,8 +143,6 @@ class Molecule:
                         comp_str += "!{}".format(bond)
                 mol_str += comp_str 
             mol_str += ")"
-        if mol["label"] is not None:
-            mol_str += "%{}".format(mol["label"])
         if mol["compartment"] is not None:
             mol_str += "@{}".format(mol["compartment"])
         return mol_str
