@@ -15,11 +15,14 @@ class BNGSimulator:
     """
     A simple front-end for running BNG simulations
     """
-    def __init__(self, bngl_file, path=None, bngexec=None, nsims=1, ncores=1, outname='output.h5', combined=False):
+    def __init__(self, bngl, path=None, bngexec=None, nsims=1, ncores=1, outname='output.h5', combined=False):
         # find BNG2.pl and path 
         self.BNGPATH, self.bngexec = find_BNG_path(bngexec)
         # Let's load in the model first
-        self.model = BNGModel(bngl_file)
+        if isinstance(bngl, BNGModel): 
+            self.model = bngl
+        elif isinstance(bngl, str):
+            self.model = BNGModel(bngl)
         # setup our path variable
         # none means we'll run under temp folders
         self.path = path
