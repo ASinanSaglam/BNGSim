@@ -113,9 +113,9 @@ class RuleXML(XMLObj):
 
     def gen_string(self):
         if self.bidirectional:
-            return "{}: {} <-> {} {},{}".format(self.name, self.side_string(self.lhs), self.side_string(self.rhs), self.rate_constants[0], self.rate_constants[1])
+            return "{}: {} <-> {} {},{}".format(self.name, self.side_string(self.reactants), self.side_string(self.products), self.rate_constants[0], self.rate_constants[1])
         else:
-            return "{}: {} -> {} {}".format(self.name, self.side_string(self.lhs), self.side_string(self.rhs), self.rate_constants[0])
+            return "{}: {} -> {} {}".format(self.name, self.side_string(self.reactants), self.side_string(self.products), self.rate_constants[0])
 
     def side_string(self, patterns):
         side_str = ""
@@ -140,12 +140,12 @@ class RuleXML(XMLObj):
         # 
         rule_name = pattern_xml['@name']
         self.name = rule_name
-        self.lhs = self.resolve_rxn_side(pattern_xml['ListOfReactantPatterns'])
-        self.rhs = self.resolve_rxn_side(pattern_xml['ListOfProductPatterns'])
+        self.reactants = self.resolve_rxn_side(pattern_xml['ListOfReactantPatterns'])
+        self.products = self.resolve_rxn_side(pattern_xml['ListOfProductPatterns'])
         if 'RateLaw' not in pattern_xml:
             print("Rule seems to be missing a rate law, please make sure that XML exporter of BNGL supports whatever you are doing!")
         self.rate_constants = [self.resolve_ratelaw(pattern_xml['RateLaw'])]
-        self.rule_tpl = (self.lhs, self.rhs, self.rate_constants)
+        self.rule_tpl = (self.reactants, self.products, self.rate_constants)
 
     def resolve_ratelaw(self, rate_xml):
         rate_type = rate_xml['@type']
@@ -179,9 +179,9 @@ class RuleXML(XMLObj):
             sl = []
             side = side_xml['ReactantPattern']
             if '@compartment' in side:
-                self.lhs_comp = side['@compartment']
+                self.react_comp = side['@compartment']
             else:
-                self.lhs_comp = None
+                self.react_comp = None
             if isinstance(side, list):
                 # this is a list of reactant patterns
                 for ireact, react in enumerate(side):
@@ -194,9 +194,9 @@ class RuleXML(XMLObj):
             side = side_xml['ProductPattern']
             sl = []
             if '@compartment' in side:
-                self.rhs_comp = side['@compartment']
+                self.prod_comp = side['@compartment']
             else:
-                self.rhs_comp = None
+                self.prod_comp = None
             if isinstance(side, list):
                 # this is a list of product patterns
                 for iprod, prod in enumerate(side):
