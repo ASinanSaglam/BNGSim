@@ -145,7 +145,7 @@ class Species(ModelBlock):
         if isinstance(key, str):
             # our keys are objects
             for ikey in self._item_dict:
-                if key == ikey.string:
+                if key == str(ikey):
                     return self._item_dict[ikey]
         if isinstance(key, int):
             # get the item in order
@@ -154,12 +154,12 @@ class Species(ModelBlock):
 
     def __setitem__(self, key, value):
         for ikey in self._item_dict:
-            if key == ikey.string:
+            if key == str(ikey):
                 self._item_dict[ikey] = value
 
     def __contains__(self, key):
         for ikey in self._item_dict:
-            if key == ikey.string:
+            if key == str(ikey):
                 return True
         return False
 
