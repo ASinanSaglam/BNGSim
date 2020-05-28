@@ -119,7 +119,7 @@ class Pattern:
             if "@label" in comp_xml:
                 comp_obj.label = comp_xml['@label']
             if "@state" in comp_xml:
-                comp_state = comp_xml['@state']
+                comp_obj = comp_xml['@state']
             if comp_xml['@numberOfBonds'] != '0':
                 bond_id = self._bonds.get_bond_id(comp_xml)
                 for bi in bond_id:
