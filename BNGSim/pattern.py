@@ -6,16 +6,40 @@ class Pattern:
     def __init__(self, pattern_xml):
         self._bonds = Bonds()
         self.molecules = []
+        self._compartment = None
+        self._label = None
         # sets self.molecules up 
         self.parse_xml(pattern_xml)
+
+    @property
+    def compartment(self):
+        return self._compartment 
+
+    @compartment.setter
+    def compartment(self, value):
+        # TODO: Build in logic to set the 
+        # outer compartment
+        print("we need built-in logic here")
+        self._compartment = value
+
+    @property
+    def label(self):
+        return self._label
+
+    @label.setter
+    def label(self, value):
+        # TODO: Build in logic to set 
+        # the outer label
+        print("we need built-in logic here")
+        self._label = value
 
     def __str__(self):
         sstr = ""
         for imol, mol in enumerate(self.molecules):
-            if imol == 0 and self.outer_comp is not None:
-                sstr += "@{}:".format(self.outer_comp)
-            if imol == 0 and self.outer_label is not None:
-                sstr += "%{}:".format(self.outer_label)
+            if imol == 0 and self.compartment is not None:
+                sstr += "@{}:".format(self.compartment)
+            if imol == 0 and self.label is not None:
+                sstr += "%{}:".format(self.label)
             if imol > 0:
                 sstr += "."
             sstr += str(mol)
@@ -32,13 +56,9 @@ class Pattern:
 
     def parse_xml(self, xml):
         if '@compartment' in xml:
-            self.outer_comp = xml['@compartment']
-        else:
-            self.outer_comp = None
+            self.compartment = xml['@compartment']
         if "@label" in xml:
-            self.outer_label = xml["@label"]
-        else: 
-            self.outer_label = None
+            self.label = xml["@label"]
         if "ListOfBonds" in xml:
             self._bonds.set_xml(xml["ListOfBonds"]["Bond"])
         mols = xml['ListOfMolecules']['Molecule']
@@ -149,7 +169,7 @@ class Molecule:
             mol_str += "@{}".format(mol["compartment"])
         return mol_str
 
-    def add_component(self, name, state=None, states=None):
+    def _add_component(self, name, state=None, states=None):
         comp_dict = {"name": name}
         if state is not None:
             comp_dict["state"] = state
@@ -157,11 +177,26 @@ class Molecule:
             comp_dict["states"] = states
         self.mol_dict['components'].append(comp_dict)
 
-    def set_compartment(self, compt):
+    def _set_compartment(self, compt):
         self.mol_dict['compartment'] = compt
     
-    def set_label(self, label):
+    def _set_label(self, label):
         self.mol_dict['label'] = label
+
+    def add_component(self, name, state=None, states=None):
+        # TODO: Add built-in logic here
+        print("we need built-in logic here")
+        self._add_component(name, state, states)
+
+    def set_compartment(self, compt):
+        # TODO: Add built-in logic here
+        print("we need built-in logic here")
+        self._set_compartment(compt)
+    
+    def set_label(self, label):
+        # TODO: Add built-in logic here
+        print("we need built-in logic here")
+        self._set_compartment(label)
 
 ###### BONDS #####
 class Bonds:
