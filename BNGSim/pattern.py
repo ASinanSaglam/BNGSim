@@ -199,14 +199,14 @@ class Molecule:
         # print("Warning: Logical checks are not complete")
         self._label = value
 
-    def _add_component(self, name, state=None, states=None):
+    def _add_component(self, name, state=None, states=[]):
         comp_obj = Component()
         comp_obj.name = name
         comp_obj.state = state
         comp_obj.states = states
         self.components.append(comp_obj)
 
-    def add_component(self, name, state=None, states=None):
+    def add_component(self, name, state=None, states=[]):
         # TODO: Add built-in logic here
         # print("Warning: Logical checks are not complete")
         self._add_component(name, state, states)

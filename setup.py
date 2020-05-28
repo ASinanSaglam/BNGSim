@@ -18,7 +18,7 @@ meta = pkg_utils.get_package_metadata(dirname, name)
 
 setuptools.setup(
         name="BNGSim",
-        version="0.3.25",
+        version="0.3.26",
         author="Ali Sinan Saglam",
         author_email="asinansaglam@gmail.com",
         description="A simple python front-end for BioNetGen simulations",
