@@ -204,7 +204,7 @@ class Molecule:
         comp_obj.name = name
         comp_obj.state = state
         comp_obj.states = states
-        self.mol_dict['components'].append(comp_obj)
+        self.components.append(comp_obj)
 
     def add_component(self, name, state=None, states=None):
         # TODO: Add built-in logic here
