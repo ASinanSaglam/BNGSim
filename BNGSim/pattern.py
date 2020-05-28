@@ -134,11 +134,31 @@ class Molecule:
         self._compartment = None
         self._label = None
 
-    # TODO: implement __setitem__,
-    # __getitem__, __iter__, __contains__
-    # and alike so it correctly maps to 
-    # the components
+    def __getitem__(self, key):
+        if isinstance(key, int):
+            return self.components[key]
 
+    def __iter__(self):
+        return self.components.__iter__()
+
+    # TODO: implement __setitem__,  __contains__
+
+    def __str__(self):
+        mol_str = self.name
+        if self.label is not None:
+            mol_str += "%{}".format(self.label)
+        if len(self.components) > 0:
+            mol_str += "("
+            for icomp, comp in enumerate(self.components):
+                if icomp > 0:
+                    mol_str += ","
+                mol_str += str(comp)
+            mol_str += ")"
+        if self.compartment is not None:
+            mol_str += "@{}".format(self.compartment)
+        return mol_str
+    
+    ### PROPERTIES ### 
     @property
     def name(self):
         return self._name
@@ -146,6 +166,7 @@ class Molecule:
     @name.setter
     def name(self, value):
         # print("Warning: Logical checks are not complete")
+        # TODO: Check for invalid characters
         self._name = value
 
     @property
@@ -178,21 +199,6 @@ class Molecule:
         # print("Warning: Logical checks are not complete")
         self._label = value
 
-    def __str__(self):
-        mol_str = self.name
-        if self.label is not None:
-            mol_str += "%{}".format(self.label)
-        if len(self.components) > 0:
-            mol_str += "("
-            for icomp, comp in enumerate(self.components):
-                if icomp > 0:
-                    mol_str += ","
-                mol_str += str(comp)
-            mol_str += ")"
-        if self.compartment is not None:
-            mol_str += "@{}".format(self.compartment)
-        return mol_str
-
     def _add_component(self, name, state=None, states=None):
         comp_obj = Component()
         comp_obj.name = name
@@ -207,13 +213,32 @@ class Molecule:
 
 class Component:
     def __init__(self):
-        # TODO: make all of these into properties
         self._name = ""
         self._label = None
         self._state = None
         self._states = []
         self._bonds = []
 
+    def __repr__(self):
+        return str(self)
+
+    def __str__(self):
+        comp_str = self.name
+        # only for moltypes
+        if len(self.states) > 0:
+            for istate, state in enumerate(self.states):
+                comp_str += "~{}".format(state)
+        # for any other pattern
+        if self.state is not None:
+            comp_str += "~{}".format(self.state)
+        if self.label is not None:
+            comp_str += "%{}".format(self.label)
+        if len(self.bonds) > 0:
+            for bond in self.bonds:
+                comp_str += "!{}".format(bond)
+        return comp_str
+
+    ### PROPERTIES ### 
     @property
     def name(self):
         return self._name
@@ -263,25 +288,6 @@ class Component:
         # TODO: Add built-in logic here
         # print("Warning: Logical checks are not complete")
         self._bonds = value
-
-    def __repr__(self):
-        return str(self)
-
-    def __str__(self):
-        comp_str = self.name
-        # only for moltypes
-        if len(self.states) > 0:
-            for istate, state in enumerate(self.states):
-                comp_str += "~{}".format(state)
-        # for any other pattern
-        if self.state is not None:
-            comp_str += "~{}".format(self.state)
-        if self.label is not None:
-            comp_str += "%{}".format(self.label)
-        if len(self.bonds) > 0:
-            for bond in self.bonds:
-                comp_str += "!{}".format(bond)
-        return comp_str
 
     def _add_state(self):
         raise NotImplemented
