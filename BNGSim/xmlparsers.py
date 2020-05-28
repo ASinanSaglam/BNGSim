@@ -52,6 +52,8 @@ class SpeciesXML(Pattern):
     def __init__(self, xml):
         self.xml = xml
         self._bonds = Bonds()
+        self._label = None
+        self._compartment = None
         self.molecules = []
         # sets self.molecules up 
         self.parse_xml(xml)
