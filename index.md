@@ -1,37 +1,36 @@
-## Welcome to GitHub Pages
 
-You can use the [editor on GitHub](https://github.com/ASinanSaglam/BNGSim/edit/gh-pages/index.md) to maintain and preview the content for your website in Markdown files.
+# BioNetGen
+This web site serves the BioNetGen user community by providing information about BioNetGen and tools for the development, annotation, and discussion of BioNetGen models.
 
-Whenever you commit to this repository, GitHub Pages will run [Jekyll](https://jekyllrb.com/) to rebuild the pages in your site, from the content in your Markdown files.
+Please send questions, comments, and account requests to bionetgen.help@gmail.com. We will treat all help requests, including models or model snippets, as confidential.
 
-### Markdown
+In publications that use BioNetGen and related tools please follow our [citation guidelines](citation_guidlines.md).
 
-Markdown is a lightweight and easy-to-use syntax for styling your writing. It includes conventions for
+## Download
+RuleBender is a graphical interface for BioNetGen that includes BioNetGen and NFsim source code and executables. We recommend starting with RuleBender for anyone new to BioNetGen and rule-based modeling.
+* [Mac](http://www.csb.pitt.edu/Faculty/Faeder/?sdm_downloads=rulebender-2-1-0-for-apple-macintosh)
+* Windows ([64bit](http://www.csb.pitt.edu/Faculty/Faeder/?sdm_downloads=rulebender-2-3-1-for-win64)) ([32bit](http://www.csb.pitt.edu/Faculty/Faeder/?sdm_downloads=rulebender-2-1-0-for-windows))
+* [Linux](http://www.csb.pitt.edu/Faculty/Faeder/?sdm_downloads=rulebender-2-1-0-for-linux)
 
-```markdown
-Syntax highlighted code block
+Compiled bundles of the command-line version of BioNetGen are available [here](BNG-distributions.md).
 
-# Header 1
-## Header 2
-### Header 3
+## Documentation and Tutorials
+* Introduction to rule-based modeling with BioNetGen and RuleBender- slides
+* Getting started with RuleBender (video)
+* BioNetGen Tutorial on GitHub
 
-- Bulleted
-- List
+## Reference
+* Quick Reference Guide
+* Actions and Arguments Guide
 
-1. Numbered
-2. List
+## Papers
+* Application Note (open access)
+* BioNetGen Primer (pdf – free)
+* BioNetGen Bible (pdf – free)
+* [Published BioNetGen models](Published_BioNetGen_Models.md)
 
-**Bold** and _Italic_ and `Code` text
+## Acknowledgments
+Current development of BioNetGen is supported in part by the NIGMS-funded (P41GM103712) National Center for Multiscale Modeling of Biological Systems (MMBioS). Past support has been provided by NIH grants (GM076570, GM103712, GM085273, AI35997, CA109552), NSF grant 0829788, the Arizona Biomedical Research Commission, and the Department of Computational Biology at the University of Pittsburgh School of Medicine.
 
-[Link](url) and ![Image](src)
-```
-
-For more details see [GitHub Flavored Markdown](https://guides.github.com/features/mastering-markdown/).
-
-### Jekyll Themes
-
-Your Pages site will use the layout and styles from the Jekyll theme you have selected in your [repository settings](https://github.com/ASinanSaglam/BNGSim/settings). The name of this theme is saved in the Jekyll `_config.yml` configuration file.
-
-### Support or Contact
-
-Having trouble with Pages? Check out our [documentation](https://docs.github.com/categories/github-pages-basics/) or [contact support](https://github.com/contact) and we’ll help you sort it out.
+## Contact
+Please send us an email if you want more information that is not provided here: bionetgen.help@gmail.com.
